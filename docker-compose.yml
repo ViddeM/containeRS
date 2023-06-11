@@ -1,0 +1,15 @@
+version: "3"
+services:
+  db:
+    image: postgres:13.2
+    environment:
+      POSTGRES_DB: registry-rs
+      POSTGRES_USER: registry-rs
+      POSTGRES_PASSWORD: password
+    ports:
+      - 5432:5432
+
+  adminer:
+    image: adminer
+    ports:
+      - 8081:8080

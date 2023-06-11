@@ -4,6 +4,6 @@ use uuid::Uuid;
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct UploadSession {
     pub id: Uuid,
-    pub repository_id: Uuid,
+    pub repository: String,
     pub created_at: DateTime<Utc>,
 }

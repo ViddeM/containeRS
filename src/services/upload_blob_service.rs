@@ -16,12 +16,16 @@ pub async fn create_session(db_pool: &Pool<DB>, namespace: String) -> RegistryRe
     {
         Ok(r) => r,
         Err(RegistryError::SqlxError(err)) => {
+            // Reset the transaction as the old one is cancelled.
+            transaction.rollback().await?;
+            transaction = db::new_transaction(db_pool).await?;
             get_repository_if_exists(err, &mut transaction, namespace).await?
         }
         Err(e) => return Err(e),
     };
 
-    let session = upload_session_repository::insert(&mut transaction, repository.id).await?;
+    let session =
+        upload_session_repository::insert(&mut transaction, repository.namespace_name).await?;
 
     transaction.commit().await?;
 
@@ -43,4 +47,21 @@ async fn get_repository_if_exists(
     }
 
     return Err(RegistryError::SqlxError(err));
+}
+
+pub async fn upload_blob(
+    db_pool: &Pool<DB>,
+    namespace: String,
+    session_id: Uuid,
+) -> RegistryResult<()> {
+    let mut transaction = db::new_transaction(db_pool).await?;
+
+    if upload_session_repository::find_by_repository_and_id(&mut transaction, namespace, session_id)
+        .await?
+        .is_none()
+    {
+        return Err(RegistryError::SessionNotFound);
+    }
+
+    Ok(())
 }

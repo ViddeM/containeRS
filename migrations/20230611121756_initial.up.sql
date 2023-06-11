@@ -8,8 +8,8 @@ CREATE TABLE repository (
 
 CREATE TABLE upload_session (
      id UUID DEFAULT uuid_generate_v4(),
-     repository_id UUID REFERENCES repository(id),
+     repository TEXT REFERENCES repository(namespace_name),
      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-     PRIMARY KEY (id, repository_id)
+     PRIMARY KEY (id, repository)
 );

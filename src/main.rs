@@ -47,7 +47,8 @@ async fn rocket() -> _ {
             routes![
                 api::blobs::head_blobs,
                 api::get_spec_compliance,
-                api::blobs::post_create_session
+                api::blobs::post_create_session,
+                api::blobs::patch_upload_blob,
             ],
         )
         .manage(db_pool)

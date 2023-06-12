@@ -15,6 +15,7 @@ pub type ConfigResult<T> = Result<T, ConfigError>;
 pub struct Config {
     pub database_url: String,
     pub log_db_statements: bool,
+    pub storage_directory: String,
 }
 
 impl Config {
@@ -23,6 +24,7 @@ impl Config {
         Ok(Self {
             database_url: load_env_str("DATABASE_URL")?,
             log_db_statements: load_env_bool("LOG_DB_STATEMENTS")?,
+            storage_directory: load_env_str("STORAGE_DIRECTORY")?,
         })
     }
 }

@@ -1,15 +1,10 @@
 use std::str::FromStr;
 
-use rocket::{
-    http::{Header, Status},
-    request::{self, FromRequest},
-    response::status,
-    Request, State,
-};
+use rocket::{http::Header, response::status, State};
 use sqlx::Pool;
 use uuid::Uuid;
 
-use crate::{db::DB, services};
+use crate::{config::Config, db::DB, services};
 
 const CONTENT_TYPE_HEADER_NAME: &str = "Content-Type";
 const CONTENT_RANGE_HEADER_NAME: &str = "Content-Range";
@@ -70,69 +65,6 @@ pub enum UploadBlobResponse<'a> {
     InvalidSessionId(&'a str),
 }
 
-#[derive(Debug, Clone)]
-pub struct UploadBlobRequestHeaders {
-    content_type: String,
-    content_start: usize,
-    content_end: usize,
-    content_length: usize,
-}
-
-impl UploadBlobRequestHeaders {
-    fn retrieve<'r>(request: &'r Request<'_>) -> Result<Self, String> {
-        request.headers().iter().for_each(|h| {
-            println!("\tGot header {h:?}");
-        });
-
-        let content_type = request
-            .headers()
-            .get_one(CONTENT_TYPE_HEADER_NAME)
-            .ok_or(format!("Missing header {CONTENT_TYPE_HEADER_NAME}"))?;
-
-        let content_range = request
-            .headers()
-            .get_one(CONTENT_TYPE_HEADER_NAME)
-            .ok_or(format!("Missing header {CONTENT_RANGE_HEADER_NAME}"))?;
-
-        let content_length = request
-            .headers()
-            .get_one(CONTENT_TYPE_HEADER_NAME)
-            .ok_or(format!("Missing header {CONTENT_LENGTH_HEADER_NAME}"))?;
-
-        let split: Vec<&str> = content_range.split("-").collect();
-        if split.len() != 2 {
-            return Err(format!(
-                "Invalid format for header {CONTENT_RANGE_HEADER_NAME}"
-            ));
-        }
-
-        Ok(Self {
-            content_type: content_type.to_string(),
-            content_start: split[0].parse().or(Err(format!(
-                "Invalid header format {CONTENT_RANGE_HEADER_NAME}"
-            )))?,
-            content_end: split[1].parse().or(Err(format!(
-                "Invalid header format {CONTENT_RANGE_HEADER_NAME}"
-            )))?,
-            content_length: content_length.parse().or(Err(format!(
-                "Invalid header format {CONTENT_LENGTH_HEADER_NAME}"
-            )))?,
-        })
-    }
-}
-
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for UploadBlobRequestHeaders {
-    type Error = String;
-
-    async fn from_request(request: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        match Self::retrieve(request) {
-            Ok(v) => request::Outcome::Success(v),
-            Err(e) => request::Outcome::Failure((Status::BadRequest, e)),
-        }
-    }
-}
-
 #[patch("/v2/<name>/blobs/uploads/<session_id>", data = "<blob>")]
 pub async fn patch_upload_blob<'a>(
     name: &str,
@@ -141,6 +73,7 @@ pub async fn patch_upload_blob<'a>(
     // The docker daemon appears to have skipped implementing these headers? Ignore for now.
     // headers: UploadBlobRequestHeaders,
     db_pool: &State<Pool<DB>>,
+    config: &State<Config>,
 ) -> UploadBlobResponse<'a> {
     // Validate the session ID
     let session_id = match Uuid::from_str(session_id) {
@@ -151,12 +84,21 @@ pub async fn patch_upload_blob<'a>(
         }
     };
 
-    match services::upload_blob_service::upload_blob(db_pool, name.to_string(), session_id).await {
-        Ok(_) => {
+    let blob_length = blob.len();
+    match services::upload_blob_service::upload_blob(
+        db_pool,
+        name.to_string(),
+        session_id,
+        config,
+        blob,
+    )
+    .await
+    {
+        Ok(new_session_id) => {
             return UploadBlobResponse::Success(UploadBlobResponseData {
                 response: "It went well?",
-                location: Header::new(LOCATION_HEADER_NAME, session_id.to_string()),
-                range: Header::new(RANGE_HEADER_NAME, format!("0-{}", blob.len())),
+                location: Header::new(LOCATION_HEADER_NAME, new_session_id.to_string()),
+                range: Header::new(RANGE_HEADER_NAME, format!("0-{}", blob_length)),
             })
         }
         Err(e) => {
@@ -165,3 +107,97 @@ pub async fn patch_upload_blob<'a>(
         }
     }
 }
+
+#[derive(Responder, Debug)]
+pub enum FinishBlobUploadResponse<'a> {
+    #[response(status = 500)]
+    Failure(&'a str),
+    #[response(status = 400)]
+    InvalidSessionId(&'a str),
+}
+
+#[put("/v2/<name>/blobs/uploads/<session_id>?<digest>")]
+pub async fn put_upload_blob<'a>(
+    name: &str,
+    session_id: &'a str,
+    digest: &'a str,
+    db_pool: &State<Pool<DB>>,
+    config: &State<Config>,
+) -> FinishBlobUploadResponse<'a> {
+    println!("Finish uploading blob {name} | {session_id} | {digest}");
+    let session_id = match Uuid::from_str(session_id) {
+        Ok(id) => id,
+        Err(e) => {
+            error!("Failed to parse session id ({session_id}), err: {e:?}");
+            return FinishBlobUploadResponse::InvalidSessionId(session_id);
+        }
+    };
+
+    todo!("NOT DONE");
+
+    FinishBlobUploadResponse::Failure("ASD")
+}
+
+// TODO: This does not appear to be supported by the current docker implementation.
+// #[derive(Debug, Clone)]
+// pub struct UploadBlobRequestHeaders {
+//     content_type: String,
+//     content_start: usize,
+//     content_end: usize,
+//     content_length: usize,
+// }
+
+// impl UploadBlobRequestHeaders {
+//     fn retrieve<'r>(request: &'r Request<'_>) -> Result<Self, String> {
+//         request.headers().iter().for_each(|h| {
+//             println!("\tGot header {h:?}");
+//         });
+
+//         let content_type = request
+//             .headers()
+//             .get_one(CONTENT_TYPE_HEADER_NAME)
+//             .ok_or(format!("Missing header {CONTENT_TYPE_HEADER_NAME}"))?;
+
+//         let content_range = request
+//             .headers()
+//             .get_one(CONTENT_TYPE_HEADER_NAME)
+//             .ok_or(format!("Missing header {CONTENT_RANGE_HEADER_NAME}"))?;
+
+//         let content_length = request
+//             .headers()
+//             .get_one(CONTENT_TYPE_HEADER_NAME)
+//             .ok_or(format!("Missing header {CONTENT_LENGTH_HEADER_NAME}"))?;
+
+//         let split: Vec<&str> = content_range.split("-").collect();
+//         if split.len() != 2 {
+//             return Err(format!(
+//                 "Invalid format for header {CONTENT_RANGE_HEADER_NAME}"
+//             ));
+//         }
+
+//         Ok(Self {
+//             content_type: content_type.to_string(),
+//             content_start: split[0].parse().or(Err(format!(
+//                 "Invalid header format {CONTENT_RANGE_HEADER_NAME}"
+//             )))?,
+//             content_end: split[1].parse().or(Err(format!(
+//                 "Invalid header format {CONTENT_RANGE_HEADER_NAME}"
+//             )))?,
+//             content_length: content_length.parse().or(Err(format!(
+//                 "Invalid header format {CONTENT_LENGTH_HEADER_NAME}"
+//             )))?,
+//         })
+//     }
+// }
+
+// #[rocket::async_trait]
+// impl<'r> FromRequest<'r> for UploadBlobRequestHeaders {
+//     type Error = String;
+
+//     async fn from_request(request: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+//         match Self::retrieve(request) {
+//             Ok(v) => request::Outcome::Success(v),
+//             Err(e) => request::Outcome::Failure((Status::BadRequest, e)),
+//         }
+//     }
+// }

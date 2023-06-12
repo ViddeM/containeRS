@@ -4,7 +4,11 @@ use rocket::{http::Header, response::status, State};
 use sqlx::Pool;
 use uuid::Uuid;
 
-use crate::{config::Config, db::DB, services};
+use crate::{
+    config::Config,
+    db::DB,
+    services::{self, upload_blob_service},
+};
 
 const CONTENT_TYPE_HEADER_NAME: &str = "Content-Type";
 const CONTENT_RANGE_HEADER_NAME: &str = "Content-Range";
@@ -109,7 +113,15 @@ pub async fn patch_upload_blob<'a>(
 }
 
 #[derive(Responder, Debug)]
+pub struct FinishBlobUploadResponseData<'a> {
+    response: &'a str,
+    location: Header<'a>,
+}
+
+#[derive(Responder, Debug)]
 pub enum FinishBlobUploadResponse<'a> {
+    #[response(status = 201)]
+    Success(FinishBlobUploadResponseData<'a>),
     #[response(status = 500)]
     Failure(&'a str),
     #[response(status = 400)]
@@ -133,9 +145,26 @@ pub async fn put_upload_blob<'a>(
         }
     };
 
-    todo!("NOT DONE");
+    let blob_id = match upload_blob_service::finish_blob_upload(
+        db_pool,
+        name.to_string(),
+        session_id,
+        digest.to_string(),
+        config,
+    )
+    .await
+    {
+        Ok(blob_id) => blob_id,
+        Err(e) => {
+            error!("Failed to finish blob upload, err: {e:?}");
+            return FinishBlobUploadResponse::Failure("Failed to finish blob upload");
+        }
+    };
 
-    FinishBlobUploadResponse::Failure("ASD")
+    FinishBlobUploadResponse::Success(FinishBlobUploadResponseData {
+        response: "Blob upload finished",
+        location: Header::new(LOCATION_HEADER_NAME, blob_id.to_string()),
+    })
 }
 
 // TODO: This does not appear to be supported by the current docker implementation.

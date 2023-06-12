@@ -1,3 +1,5 @@
+DROP TABLE blob;
+
 DROP TABLE upload_session;
 
 DROP TABLE repository;

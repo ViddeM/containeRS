@@ -10,6 +10,12 @@ pub enum RegistryError {
     IOError(#[from] io::Error),
     #[error("Session with was not found")]
     SessionNotFound,
+    #[error("Invalid state")]
+    InvalidState,
+    #[error("Unsupported digest algorithm")]
+    UnsupportedDigest,
+    #[error("Invalid digest")]
+    InvalidDigest,
 }
 
 pub type RegistryResult<T> = Result<T, RegistryError>;

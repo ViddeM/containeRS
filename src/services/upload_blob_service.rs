@@ -91,7 +91,7 @@ fn save_file(
     config: &Config,
     blob: Vec<u8>,
 ) -> RegistryResult<()> {
-    let path_name = format!("{}/{namespace}/blobs", config.storage_directory);
+    let path_name = format!("{}/{namespace}/blobs/sha256", config.storage_directory);
     let path = Path::new(path_name.as_str());
     fs::create_dir_all(path)?;
 
@@ -158,7 +158,7 @@ fn validate_digest(
         .ok_or(RegistryError::UnsupportedDigest)?;
 
     let file_name = format!(
-        "{}/{namespace}/blobs/{}.tar.gz",
+        "{}/{namespace}/blobs/sha256/{}.tar.gz",
         config.storage_directory, session_id
     );
     let file_path = Path::new(&file_name);

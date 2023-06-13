@@ -42,3 +42,22 @@ WHERE id = $1 AND repository = $2
     .fetch_optional(transaction)
     .await?)
 }
+
+pub async fn find_by_repository_and_digest(
+    transaction: &mut Transaction<'_, DB>,
+    repository: String,
+    digest: String,
+) -> RegistryResult<Option<Blob>> {
+    Ok(sqlx::query_as!(
+        Blob,
+        r#"
+SELECT id, repository, digest, created_at
+FROM blob
+WHERE digest = $1 AND repository = $2
+    "#,
+        digest,
+        repository
+    )
+    .fetch_optional(transaction)
+    .await?)
+}

@@ -3,6 +3,8 @@ use sqlx::{Pool, Postgres, Transaction};
 use crate::registry_error::{RegistryError, RegistryResult};
 
 pub mod blob_repository;
+pub mod manifest_layer_repository;
+pub mod manifest_repository;
 pub mod repository_repository;
 pub mod upload_session_repository;
 

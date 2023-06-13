@@ -1,13 +1,13 @@
 use std::str::FromStr;
 
-use rocket::{http::Header, response::status, State};
+use rocket::{http::Header, State};
 use sqlx::Pool;
 use uuid::Uuid;
 
 use crate::{
     config::Config,
     db::DB,
-    services::{self, upload_blob_service},
+    services::{self, get_blob_service, upload_blob_service},
 };
 
 const CONTENT_TYPE_HEADER_NAME: &str = "Content-Type";
@@ -15,10 +15,42 @@ const CONTENT_RANGE_HEADER_NAME: &str = "Content-Range";
 const CONTENT_LENGTH_HEADER_NAME: &str = "Content-Length";
 const LOCATION_HEADER_NAME: &str = "Location";
 const RANGE_HEADER_NAME: &str = "Range";
+const DOCKER_CONTENT_DIGEST_HEADER_NAME: &str = "Docker-Content-Digest";
+
+#[derive(Responder)]
+pub struct HeadBlobsResponseData<'a> {
+    response: &'a str,
+    digest: Header<'a>,
+}
+
+#[derive(Responder)]
+pub enum HeadBlobsResponse<'a> {
+    #[response(status = 200)]
+    Found(HeadBlobsResponseData<'a>),
+    #[response(status = 404)]
+    NotFound(()),
+    #[response(status = 500)]
+    Err(String),
+}
 
 #[head("/v2/<name>/blobs/<digest>")]
-pub async fn head_blobs(name: &str, digest: &str) -> status::NotFound<()> {
-    status::NotFound(())
+pub async fn head_blobs<'a>(
+    name: &str,
+    digest: &str,
+    db_pool: &State<Pool<DB>>,
+) -> HeadBlobsResponse<'a> {
+    match get_blob_service::find_blob_by_digest(db_pool, name.to_string(), digest.to_string()).await
+    {
+        Ok(Some(digest)) => HeadBlobsResponse::Found(HeadBlobsResponseData {
+            response: "Found blob",
+            digest: Header::new(DOCKER_CONTENT_DIGEST_HEADER_NAME, digest),
+        }),
+        Ok(None) => HeadBlobsResponse::NotFound(()),
+        Err(e) => {
+            error!("Failed to find blob, err: {e:?}");
+            HeadBlobsResponse::Err("Something went wrong whilst looking for blob".to_string())
+        }
+    }
 }
 
 #[derive(Responder, Debug)]
@@ -136,7 +168,6 @@ pub async fn put_upload_blob<'a>(
     db_pool: &State<Pool<DB>>,
     config: &State<Config>,
 ) -> FinishBlobUploadResponse<'a> {
-    println!("Finish uploading blob {name} | {session_id} | {digest}");
     let session_id = match Uuid::from_str(session_id) {
         Ok(id) => id,
         Err(e) => {

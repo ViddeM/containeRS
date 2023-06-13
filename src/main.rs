@@ -14,6 +14,7 @@ extern crate rocket;
 pub mod api;
 pub mod config;
 pub mod db;
+pub mod debug_headers;
 pub mod models;
 pub mod registry_error;
 pub mod services;
@@ -50,6 +51,7 @@ async fn rocket() -> _ {
                 api::blobs::post_create_session,
                 api::blobs::patch_upload_blob,
                 api::blobs::put_upload_blob,
+                api::manifests::put_manifest,
             ],
         )
         .manage(db_pool)

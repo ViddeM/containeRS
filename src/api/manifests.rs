@@ -1,5 +1,5 @@
 use rocket::{
-    http::Status,
+    http::{Header, Status},
     request::{self, FromRequest},
     Request, State,
 };
@@ -7,13 +7,26 @@ use sqlx::Pool;
 
 use crate::{config::Config, db::DB, services};
 
+use super::{DOCKER_CONTENT_DIGEST_HEADER_NAME, LOCATION_HEADER_NAME};
+
 const CONTENT_LENGTH_HEADER_NAME: &str = "Content-Length";
 const CONTENT_TYPE_HEADER_NAME: &str = "Content-Type";
 
 #[derive(Responder, Debug)]
-pub enum PutManifestResponse {
+pub struct PutManifestResponseData<'a> {
+    response: &'a str,
+    location: Header<'a>,
+    docker_content_digest: Header<'a>,
+}
+
+#[derive(Responder, Debug)]
+pub enum PutManifestResponse<'a> {
+    #[response(status = 201)]
+    Success(PutManifestResponseData<'a>),
     #[response(status = 400)]
     BadRequest(String),
+    #[response(status = 500)]
+    Failure(&'a str),
 }
 
 pub struct ManifestHeaders {
@@ -23,7 +36,7 @@ pub struct ManifestHeaders {
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for ManifestHeaders {
-    type Error = PutManifestResponse;
+    type Error = PutManifestResponse<'r>;
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
         let content_length: usize = match req.headers().get_one(CONTENT_LENGTH_HEADER_NAME) {
@@ -71,14 +84,14 @@ impl<'r> FromRequest<'r> for ManifestHeaders {
 }
 
 #[put("/v2/<name>/manifests/<reference>", data = "<manifest_data>")]
-pub async fn put_manifest(
+pub async fn put_manifest<'a>(
     name: &str,
     reference: &str,
     headers: ManifestHeaders,
     manifest_data: Vec<u8>,
-    db_pool: &State<Pool<DB>>,
     config: &State<Config>,
-) -> () {
+    db_pool: &State<Pool<DB>>,
+) -> PutManifestResponse<'a> {
     match services::upload_manifest_service::upload_manifest(
         name.to_string(),
         reference.to_string(),
@@ -90,11 +103,14 @@ pub async fn put_manifest(
     )
     .await
     {
-        Ok(_) => {}
+        Ok((manifest_id, digest)) => PutManifestResponse::Success(PutManifestResponseData {
+            response: "Upload manifest successful",
+            location: Header::new(LOCATION_HEADER_NAME, format!("/{manifest_id}")),
+            docker_content_digest: Header::new(DOCKER_CONTENT_DIGEST_HEADER_NAME, digest),
+        }),
         Err(e) => {
             error!("Failed to upload manifest {e:?}");
+            PutManifestResponse::Failure("Failed to upload manifest")
         }
     }
-
-    ()
 }

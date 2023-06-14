@@ -18,6 +18,7 @@ pub mod debug_headers;
 pub mod models;
 pub mod registry_error;
 pub mod services;
+pub mod types;
 
 #[launch]
 async fn rocket() -> _ {

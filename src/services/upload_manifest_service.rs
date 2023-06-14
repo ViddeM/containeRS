@@ -1,13 +1,12 @@
-use std::{fs, io::Write, path::Path};
-
-use serde::Deserialize;
-use serde_json::value::RawValue;
 use sqlx::Pool;
+use std::{fs, io::Write, path::Path};
+use uuid::Uuid;
 
 use crate::{
     config::Config,
-    db::{self, DB},
+    db::{self, blob_repository, manifest_layer_repository, manifest_repository, DB},
     registry_error::{RegistryError, RegistryResult},
+    types::manifest::DockerImageManifestV2,
 };
 
 pub async fn upload_manifest(
@@ -18,7 +17,7 @@ pub async fn upload_manifest(
     data: Vec<u8>,
     config: &Config,
     db_pool: &Pool<DB>,
-) -> RegistryResult<()> {
+) -> RegistryResult<(Uuid, String)> {
     if content_length != data.len() {
         error!(
             "Invalid content length, got {content_length} but data is {}",
@@ -28,125 +27,62 @@ pub async fn upload_manifest(
     }
 
     // Validate the manifest
-    ManifestType::parse(content_type, &data)?;
+    let image_manifest = DockerImageManifestV2::parse(content_type, data.clone())?;
 
     let mut transaction = db::new_transaction(db_pool).await?;
 
+    let image_blob = blob_repository::find_by_repository_and_digest(
+        &mut transaction,
+        namespace.clone(),
+        image_manifest.config.digest.clone(),
+    )
+    .await?
+    .ok_or(RegistryError::InvalidDigest)?;
+    let manifest = manifest_repository::insert(
+        &mut transaction,
+        namespace.clone(),
+        image_blob.id,
+        reference.clone(),
+    )
+    .await?;
+
+    for layer in image_manifest.layers.iter() {
+        let blob = blob_repository::find_by_repository_and_digest(
+            &mut transaction,
+            namespace.clone(),
+            layer.digest.clone(),
+        )
+        .await?
+        .ok_or(RegistryError::InvalidDigest)?;
+        manifest_layer_repository::insert(
+            &mut transaction,
+            manifest.id,
+            blob.id,
+            layer.media_type.clone(),
+            layer.size,
+        )
+        .await?;
+    }
+
     transaction.commit().await?;
 
-    let digest = "".to_string();
+    save_file(manifest.id, config, data)?;
 
-    save_file(namespace, digest, config, data)?;
-
-    Ok(())
+    Ok((manifest.id, image_manifest.config.digest))
 }
 
-fn save_file(
-    namespace: String,
-    digest: String,
-    config: &Config,
-    data: Vec<u8>,
-) -> RegistryResult<()> {
-    let path_name = format!("{}/{namespace}/images/sha256", config.storage_directory);
+fn save_file(manifest_id: Uuid, config: &Config, data: Vec<u8>) -> RegistryResult<()> {
+    let path_name = format!("{}/manifests", config.storage_directory);
     let path = Path::new(path_name.as_str());
     fs::create_dir_all(path)?;
+    println!("Creating directories {path:?}");
 
-    let file_path_name = format!("{}.json", digest);
+    let file_path_name = format!("{}.json", manifest_id.to_string());
     let file_path = Path::new(file_path_name.as_str());
     let mut file = fs::File::create(path.join(file_path))?;
+    println!("File stored at {file_path:?}");
 
     file.write_all(&data)?;
 
     Ok(())
-}
-
-const FAT_MANIFEST_CONTENT_TYPE: &str = "application/vnd.docker.distribution.manifest.list.v2+json";
-const DOCKER_IMAGE_MANIFEST_V2: &str = "application/vnd.docker.distribution.manifest.v2+json";
-
-#[derive(Debug, Clone)]
-enum ManifestType<'a> {
-    FatManifest(FatManifest<'a>),
-    DockerImageManifestV2(DockerImageManifestV2<'a>),
-}
-
-impl<'a> ManifestType<'a> {
-    fn parse(content_type: String, data: &'a Vec<u8>) -> RegistryResult<Self> {
-        let slice = data.as_slice();
-        match content_type.as_str() {
-            FAT_MANIFEST_CONTENT_TYPE => {
-                let fat_manifest: FatManifest = serde_json::from_slice(slice)?;
-                fat_manifest.validate()?;
-                Ok(Self::FatManifest(fat_manifest))
-            }
-            DOCKER_IMAGE_MANIFEST_V2 => {
-                let image_manifest: DockerImageManifestV2 = serde_json::from_slice(slice)?;
-                image_manifest.validate()?;
-                Ok(Self::DockerImageManifestV2(image_manifest))
-            }
-            _ => {
-                error!("Got unsupported manifest type {content_type}");
-                Err(RegistryError::UnsupportedManifestType)
-            }
-        }
-    }
-}
-
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-struct FatManifest<'a> {
-    schema_version: i32,
-    media_type: String,
-    #[serde(borrow)]
-    manifest: &'a RawValue,
-}
-
-impl<'a> FatManifest<'a> {
-    fn validate(&self) -> RegistryResult<()> {
-        if self.schema_version != 2 {
-            return Err(RegistryError::InvalidManifestSchema(format!(
-                "Expected manifest version 2, got {}",
-                self.schema_version
-            )));
-        }
-
-        if self.media_type.as_str() != FAT_MANIFEST_CONTENT_TYPE {
-            return Err(RegistryError::InvalidManifestSchema(format!(
-                "Expected media_type {FAT_MANIFEST_CONTENT_TYPE}, got {}",
-                self.media_type
-            )));
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-struct DockerImageManifestV2<'a> {
-    schema_version: i32,
-    media_type: String,
-    #[serde(borrow)]
-    config: &'a RawValue,
-    #[serde(borrow)]
-    layers: &'a RawValue,
-}
-
-impl<'a> DockerImageManifestV2<'a> {
-    fn validate(&self) -> RegistryResult<()> {
-        if self.schema_version != 2 {
-            return Err(RegistryError::InvalidManifestSchema(format!(
-                "Expected manifest version 2, got {}",
-                self.schema_version
-            )));
-        }
-
-        if self.media_type.as_str() != DOCKER_IMAGE_MANIFEST_V2 {
-            return Err(RegistryError::InvalidManifestSchema(format!(
-                "Expected media_type {DOCKER_IMAGE_MANIFEST_V2}, got {}",
-                self.media_type
-            )));
-        }
-
-        Ok(())
-    }
 }

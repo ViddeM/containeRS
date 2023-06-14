@@ -12,6 +12,7 @@ CREATE TABLE upload_session (
      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
      repository TEXT NOT NULL REFERENCES repository(namespace_name),
      
+     digest TEXT,
      previous_session UUID REFERENCES upload_session(id),
      is_finished BOOLEAN NOT NULL DEFAULT FALSE,
 
@@ -35,7 +36,7 @@ CREATE TABLE manifest (
 
      repository TEXT NOT NULL REFERENCES repository(namespace_name),
      tag TEXT NOT NULL,
-     digest TEXT NOT NULL,
+     blob_id UUID NOT NULL REFERENCES blob(id),
 
      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 

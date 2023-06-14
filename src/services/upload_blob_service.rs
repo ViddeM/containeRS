@@ -1,6 +1,5 @@
 use std::{fs, io::Write, path::Path};
 
-use sha256::try_digest;
 use sqlx::{Pool, Transaction};
 use uuid::Uuid;
 
@@ -29,7 +28,7 @@ pub async fn create_session(db_pool: &Pool<DB>, namespace: String) -> RegistryRe
     };
 
     let session =
-        upload_session_repository::insert(&mut transaction, None, repository.namespace_name)
+        upload_session_repository::insert(&mut transaction, None, None, repository.namespace_name)
             .await?;
 
     transaction.commit().await?;
@@ -74,11 +73,17 @@ pub async fn upload_blob(
         None => return Err(RegistryError::SessionNotFound),
     };
 
-    let new_session =
-        upload_session_repository::insert(&mut transaction, Some(session_id), session.repository)
-            .await?;
+    let digest = sha256::digest(blob.as_slice());
 
-    save_file(namespace, session_id, config, blob)?;
+    let new_session = upload_session_repository::insert(
+        &mut transaction,
+        Some(session_id),
+        Some(digest.clone()),
+        session.repository,
+    )
+    .await?;
+
+    save_file(namespace, digest, config, blob)?;
 
     transaction.commit().await?;
 
@@ -87,15 +92,15 @@ pub async fn upload_blob(
 
 fn save_file(
     namespace: String,
-    session_id: Uuid,
+    digest: String,
     config: &Config,
     blob: Vec<u8>,
 ) -> RegistryResult<()> {
-    let path_name = format!("{}/{namespace}/blobs/sha256", config.storage_directory);
+    let path_name = format!("{}/blobs/sha256", config.storage_directory);
     let path = Path::new(path_name.as_str());
     fs::create_dir_all(path)?;
 
-    let file_path_name = format!("{}.tar.gz", session_id.to_string());
+    let file_path_name = format!("{}.tar.gz", digest);
     let file_path = Path::new(file_path_name.as_str());
     let mut file = fs::File::create(path.join(file_path))?;
 
@@ -108,7 +113,6 @@ pub async fn finish_blob_upload(
     namespace: String,
     session_id: Uuid,
     digest: String,
-    config: &Config,
 ) -> RegistryResult<Uuid> {
     let mut transaction = db::new_transaction(db_pool).await?;
 
@@ -123,7 +127,7 @@ pub async fn finish_blob_upload(
     let file_session = upload_session_repository::find_by_repository_and_id(
         &mut transaction,
         namespace.clone(),
-        session.previous_session.unwrap(),
+        session.id,
     )
     .await?
     .ok_or_else(|| {
@@ -131,7 +135,7 @@ pub async fn finish_blob_upload(
         RegistryError::InvalidState
     })?;
 
-    validate_digest(namespace, file_session.id, config, digest.clone())?;
+    validate_digest(digest.clone(), file_session.digest)?;
 
     upload_session_repository::set_finished(
         &mut transaction,
@@ -147,27 +151,17 @@ pub async fn finish_blob_upload(
     Ok(blob.id)
 }
 
-fn validate_digest(
-    namespace: String,
-    session_id: Uuid,
-    config: &Config,
-    digest: String,
-) -> RegistryResult<()> {
+fn validate_digest(digest: String, stored_digest: Option<String>) -> RegistryResult<()> {
     let digest = digest
         .strip_prefix("sha256:")
         .ok_or(RegistryError::UnsupportedDigest)?;
 
-    let file_name = format!(
-        "{}/{namespace}/blobs/sha256/{}.tar.gz",
-        config.storage_directory, session_id
-    );
-    let file_path = Path::new(&file_name);
-    let file_hash = try_digest(file_path)?;
-
-    if digest != &file_hash {
-        println!("Digest missmatch '{digest}' != '{file_hash}'");
-        return Err(RegistryError::InvalidDigest);
+    match stored_digest {
+        Some(stored) if stored == digest => return Ok(()),
+        Some(stored) => {
+            error!("Stored digest '{stored}' does not match provided digest '{digest}'")
+        }
+        None => error!("No digest stored!"),
     }
-
-    Ok(())
+    Err(RegistryError::InvalidDigest)
 }

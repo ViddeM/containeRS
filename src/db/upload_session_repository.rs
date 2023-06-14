@@ -8,15 +8,17 @@ use super::DB;
 pub async fn insert(
     transaction: &mut Transaction<'_, DB>,
     prev_session: Option<Uuid>,
+    digest: Option<String>,
     repository: String,
 ) -> RegistryResult<UploadSession> {
     Ok(sqlx::query_as!(
         UploadSession,
         r#"
-INSERT INTO upload_session(repository, previous_session)
-VALUES                    ($1,         $2)
-RETURNING id, previous_session, repository, created_at, is_finished
+INSERT INTO upload_session(digest, repository, previous_session)
+VALUES                    ($1,     $2,         $3)
+RETURNING id, previous_session, digest, repository, created_at, is_finished
     "#,
+        digest,
         repository,
         prev_session,
     )
@@ -53,7 +55,7 @@ pub async fn find_by_repository_and_id(
     Ok(sqlx::query_as!(
         UploadSession,
         r#"
-SELECT id, previous_session, repository, created_at, is_finished
+SELECT id, previous_session, digest, repository, created_at, is_finished
 FROM upload_session
 WHERE id = $1 AND repository = $2
     "#,

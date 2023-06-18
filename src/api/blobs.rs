@@ -1,6 +1,10 @@
 use std::str::FromStr;
 
-use rocket::{http::Header, State};
+use rocket::{
+    fs::NamedFile,
+    http::{ContentType, Header},
+    State,
+};
 use sqlx::Pool;
 use uuid::Uuid;
 
@@ -13,43 +17,52 @@ use crate::{
 use super::{DOCKER_CONTENT_DIGEST_HEADER_NAME, LOCATION_HEADER_NAME, RANGE_HEADER_NAME};
 
 #[derive(Responder)]
-pub struct HeadBlobsResponseData<'a> {
-    response: &'a str,
+pub struct GetBlobResponseData<'a> {
+    file: NamedFile,
+    content_type: ContentType,
     digest: Header<'a>,
 }
 
 #[derive(Responder)]
-pub enum HeadBlobsResponse<'a> {
+pub enum GetBlobResponse<'a> {
     #[response(status = 200)]
-    Found(HeadBlobsResponseData<'a>),
+    Found(GetBlobResponseData<'a>),
     #[response(status = 404)]
     NotFound(()),
     #[response(status = 500)]
     Err(String),
 }
 
-#[head("/v2/<name>/blobs/<digest>")]
-pub async fn head_blobs<'a>(
+#[get("/v2/<name>/blobs/<digest>")]
+pub async fn get_blob<'a>(
     name: &str,
     digest: &str,
     db_pool: &State<Pool<DB>>,
-) -> HeadBlobsResponse<'a> {
-    match get_blob_service::find_blob_by_digest(db_pool, name.to_string(), digest.to_string()).await
+    config: &State<Config>,
+) -> GetBlobResponse<'a> {
+    match get_blob_service::find_blob_by_digest(
+        db_pool,
+        config,
+        name.to_string(),
+        digest.to_string(),
+    )
+    .await
     {
-        Ok(Some(digest)) => {
-            println!("Blob exists {digest}");
-            HeadBlobsResponse::Found(HeadBlobsResponseData {
-                response: "Found blob",
-                digest: Header::new(DOCKER_CONTENT_DIGEST_HEADER_NAME, digest),
+        Ok(Some((blob, file))) => {
+            println!("Blob exists {}", blob.digest);
+            GetBlobResponse::Found(GetBlobResponseData {
+                file,
+                content_type: ContentType::TAR,
+                digest: Header::new(DOCKER_CONTENT_DIGEST_HEADER_NAME, blob.digest),
             })
         }
         Ok(None) => {
             println!("Blob does not exist {digest}");
-            HeadBlobsResponse::NotFound(())
+            GetBlobResponse::NotFound(())
         }
         Err(e) => {
             error!("Failed to find blob, err: {e:?}");
-            HeadBlobsResponse::Err("Something went wrong whilst looking for blob".to_string())
+            GetBlobResponse::Err("Something went wrong whilst looking for blob".to_string())
         }
     }
 }

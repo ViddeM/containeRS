@@ -19,7 +19,7 @@ use super::{
 
 #[derive(Responder, Debug)]
 pub struct GetManifestResponseData<'a> {
-    named_file: NamedFile,
+    file: NamedFile,
     content_type: ContentType,
     docker_digest: Header<'a>,
 }
@@ -52,7 +52,7 @@ pub async fn get_manifest<'a>(
         Ok(Some((manifest, blob, file))) => {
             println!("Manifest found for {name}/{reference}");
             GetManifestResponse::Success(GetManifestResponseData {
-                named_file: file,
+                file: file,
                 content_type: ContentType::new(
                     manifest.content_type_top,
                     manifest.content_type_sub,
@@ -65,7 +65,7 @@ pub async fn get_manifest<'a>(
             GetManifestResponse::FileNotFound("File not found")
         }
         Err(e) => {
-            error!("Failed to get manifest, err: {e}");
+            error!("Failed to get manifest, err: {e:?}");
             GetManifestResponse::Failure("An error occurred")
         }
     }

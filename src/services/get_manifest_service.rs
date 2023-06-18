@@ -8,7 +8,7 @@ use crate::{
     config::Config,
     db::{self, blob_repository, manifest_repository, DB},
     models::{blob::Blob, manifest::Manifest},
-    registry_error::{RegistryError, RegistryResult},
+    registry_error::RegistryResult,
 };
 
 pub async fn find_manifest(
@@ -19,16 +19,18 @@ pub async fn find_manifest(
 ) -> RegistryResult<Option<(Manifest, Blob, NamedFile)>> {
     let mut transaction = db::new_transaction(db_pool).await?;
 
-    let manifest = if let Some(digest) = reference.strip_prefix("sha256:") {
+    let manifest = if reference.starts_with("sha256:") {
+        println!("Identified as a digest {reference}, retrieving manifest from that");
         Some(
             manifest_repository::find_by_repository_and_digest(
                 &mut transaction,
                 namespace.clone(),
-                digest.to_string(),
+                reference.to_string(),
             )
             .await?,
         )
     } else {
+        println!("Assumed to be tag {reference}, retrieving manifest from that");
         manifest_repository::find_by_repository_and_tag(
             &mut transaction,
             namespace.clone(),

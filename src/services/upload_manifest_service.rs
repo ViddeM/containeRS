@@ -6,7 +6,10 @@ use crate::{
     config::Config,
     db::{self, blob_repository, manifest_layer_repository, manifest_repository, DB},
     registry_error::{RegistryError, RegistryResult},
-    types::manifest::DockerImageManifestV2,
+    types::manifest::{
+        DockerImageManifestV2, APPLICATION_CONTENT_TYPE_TOP,
+        DOCKER_IMAGE_MANIFEST_V2_CONTENT_TYPE_SUB,
+    },
 };
 
 pub async fn upload_manifest(
@@ -38,13 +41,30 @@ pub async fn upload_manifest(
     )
     .await?
     .ok_or(RegistryError::InvalidDigest)?;
-    let manifest = manifest_repository::insert(
+
+    let manifest = match manifest_repository::find_by_repository_and_tag(
         &mut transaction,
         namespace.clone(),
-        image_blob.id,
         reference.clone(),
     )
-    .await?;
+    .await?
+    {
+        Some(m) => {
+            println!("Manifest already exists, overwriting");
+            m
+        }
+        None => {
+            manifest_repository::insert(
+                &mut transaction,
+                namespace.clone(),
+                image_blob.id,
+                reference.clone(),
+                APPLICATION_CONTENT_TYPE_TOP.to_string(),
+                DOCKER_IMAGE_MANIFEST_V2_CONTENT_TYPE_SUB.to_string(),
+            )
+            .await?
+        }
+    };
 
     for layer in image_manifest.layers.iter() {
         let blob = blob_repository::find_by_repository_and_digest(
@@ -54,14 +74,28 @@ pub async fn upload_manifest(
         )
         .await?
         .ok_or(RegistryError::InvalidDigest)?;
-        manifest_layer_repository::insert(
+
+        match manifest_layer_repository::find_by_manifest_and_blob(
             &mut transaction,
-            manifest.id,
-            blob.id,
-            layer.media_type.clone(),
-            layer.size,
+            manifest.id.clone(),
+            blob.id.clone(),
         )
-        .await?;
+        .await?
+        {
+            Some(_) => {
+                println!("Manifest layer already exists, skipping DB insertion");
+            }
+            None => {
+                manifest_layer_repository::insert(
+                    &mut transaction,
+                    manifest.id,
+                    blob.id,
+                    layer.media_type.clone(),
+                    layer.size,
+                )
+                .await?;
+            }
+        }
     }
 
     transaction.commit().await?;

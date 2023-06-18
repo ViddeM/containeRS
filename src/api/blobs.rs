@@ -36,11 +36,17 @@ pub async fn head_blobs<'a>(
 ) -> HeadBlobsResponse<'a> {
     match get_blob_service::find_blob_by_digest(db_pool, name.to_string(), digest.to_string()).await
     {
-        Ok(Some(digest)) => HeadBlobsResponse::Found(HeadBlobsResponseData {
-            response: "Found blob",
-            digest: Header::new(DOCKER_CONTENT_DIGEST_HEADER_NAME, digest),
-        }),
-        Ok(None) => HeadBlobsResponse::NotFound(()),
+        Ok(Some(digest)) => {
+            println!("Blob exists {digest}");
+            HeadBlobsResponse::Found(HeadBlobsResponseData {
+                response: "Found blob",
+                digest: Header::new(DOCKER_CONTENT_DIGEST_HEADER_NAME, digest),
+            })
+        }
+        Ok(None) => {
+            println!("Blob does not exist {digest}");
+            HeadBlobsResponse::NotFound(())
+        }
         Err(e) => {
             error!("Failed to find blob, err: {e:?}");
             HeadBlobsResponse::Err("Something went wrong whilst looking for blob".to_string())

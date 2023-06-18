@@ -3,6 +3,10 @@ use serde_json::value::RawValue;
 
 use crate::registry_error::{RegistryError, RegistryResult};
 
+pub const APPLICATION_CONTENT_TYPE_TOP: &str = "application";
+pub const DOCKER_IMAGE_MANIFEST_V2_CONTENT_TYPE_SUB: &str =
+    "vnd.docker.distribution.manifest.v2+json";
+
 const FAT_MANIFEST_CONTENT_TYPE: &str = "application/vnd.docker.distribution.manifest.list.v2+json";
 const DOCKER_IMAGE_MANIFEST_V2: &str = "application/vnd.docker.distribution.manifest.v2+json";
 const CONTAINER_CONFIG_JSON: &str = "application/vnd.docker.container.image.v1+json";

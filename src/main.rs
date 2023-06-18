@@ -53,6 +53,7 @@ async fn rocket() -> _ {
                 api::blobs::patch_upload_blob,
                 api::blobs::put_upload_blob,
                 api::manifests::put_manifest,
+                api::manifests::get_manifest,
             ],
         )
         .manage(db_pool)

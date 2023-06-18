@@ -1,16 +1,75 @@
 use rocket::{
-    http::{Header, Status},
+    fs::NamedFile,
+    http::{ContentType, Header, Status},
     request::{self, FromRequest},
     Request, State,
 };
 use sqlx::Pool;
 
-use crate::{config::Config, db::DB, services};
+use crate::{
+    config::Config,
+    db::DB,
+    services::{self, get_manifest_service},
+};
 
-use super::{DOCKER_CONTENT_DIGEST_HEADER_NAME, LOCATION_HEADER_NAME};
+use super::{
+    CONTENT_LENGTH_HEADER_NAME, CONTENT_TYPE_HEADER_NAME, DOCKER_CONTENT_DIGEST_HEADER_NAME,
+    LOCATION_HEADER_NAME,
+};
 
-const CONTENT_LENGTH_HEADER_NAME: &str = "Content-Length";
-const CONTENT_TYPE_HEADER_NAME: &str = "Content-Type";
+#[derive(Responder, Debug)]
+pub struct GetManifestResponseData<'a> {
+    named_file: NamedFile,
+    content_type: ContentType,
+    docker_digest: Header<'a>,
+}
+
+#[derive(Responder, Debug)]
+pub enum GetManifestResponse<'a> {
+    #[response(status = 200)]
+    Success(GetManifestResponseData<'a>),
+    #[response(status = 404)]
+    FileNotFound(&'a str),
+    #[response(status = 500)]
+    Failure(&'a str),
+}
+
+#[get("/v2/<name>/manifests/<reference>")]
+pub async fn get_manifest<'a>(
+    name: &str,
+    reference: &str,
+    db_pool: &State<Pool<DB>>,
+    config: &State<Config>,
+) -> GetManifestResponse<'a> {
+    match get_manifest_service::find_manifest(
+        db_pool,
+        name.to_string(),
+        reference.to_string(),
+        config,
+    )
+    .await
+    {
+        Ok(Some((manifest, blob, file))) => {
+            println!("Manifest found for {name}/{reference}");
+            GetManifestResponse::Success(GetManifestResponseData {
+                named_file: file,
+                content_type: ContentType::new(
+                    manifest.content_type_top,
+                    manifest.content_type_sub,
+                ),
+                docker_digest: Header::new(DOCKER_CONTENT_DIGEST_HEADER_NAME, blob.digest),
+            })
+        }
+        Ok(None) => {
+            println!("Failed to find manifest {name}/{reference}");
+            GetManifestResponse::FileNotFound("File not found")
+        }
+        Err(e) => {
+            error!("Failed to get manifest, err: {e}");
+            GetManifestResponse::Failure("An error occurred")
+        }
+    }
+}
 
 #[derive(Responder, Debug)]
 pub struct PutManifestResponseData<'a> {

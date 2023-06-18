@@ -47,15 +47,16 @@ async fn rocket() -> _ {
         .mount(
             "/",
             routes![
-                api::blobs::get_blob,
-                api::get_spec_compliance,
-                api::blobs::post_create_session,
-                api::blobs::patch_upload_blob,
-                api::blobs::put_upload_blob,
-                api::manifests::put_manifest,
-                api::manifests::get_manifest,
+                api::container_spec::blobs::get_blob,
+                api::container_spec::get_spec_compliance,
+                api::container_spec::blobs::post_create_session,
+                api::container_spec::blobs::patch_upload_blob,
+                api::container_spec::blobs::put_upload_blob,
+                api::container_spec::manifests::put_manifest,
+                api::container_spec::manifests::get_manifest,
             ],
         )
+        .mount("/api", routes![api::images::get_images])
         .manage(db_pool)
         .manage(config)
 }

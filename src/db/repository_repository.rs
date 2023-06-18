@@ -37,3 +37,15 @@ WHERE namespace_name = $1
     .fetch_one(transaction)
     .await?)
 }
+
+pub async fn get_all(transaction: &mut Transaction<'_, DB>) -> RegistryResult<Vec<Repository>> {
+    Ok(sqlx::query_as!(
+        Repository,
+        r#"
+SELECT id, namespace_name, created_at
+FROM repository
+        "#
+    )
+    .fetch_all(transaction)
+    .await?)
+}

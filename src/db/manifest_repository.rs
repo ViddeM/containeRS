@@ -68,3 +68,20 @@ WHERE m.repository = $1 AND b.digest = $2
     .fetch_one(transaction)
     .await?)
 }
+
+pub async fn find_all_by_repository(
+    transaction: &mut Transaction<'_, DB>,
+    repository: String,
+) -> RegistryResult<Vec<Manifest>> {
+    Ok(sqlx::query_as!(
+        Manifest,
+        r#"
+SELECT id, repository, tag, blob_id, content_type_top, content_type_sub, created_at
+FROM manifest
+WHERE repository = $1
+        "#,
+        repository
+    )
+    .fetch_all(transaction)
+    .await?)
+}

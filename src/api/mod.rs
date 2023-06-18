@@ -1,14 +1,11 @@
-pub mod blobs;
-pub mod manifests;
+use serde::{Deserialize, Serialize};
 
-const CONTENT_TYPE_HEADER_NAME: &str = "Content-Type";
-const CONTENT_RANGE_HEADER_NAME: &str = "Content-Range";
-const CONTENT_LENGTH_HEADER_NAME: &str = "Content-Length";
-const LOCATION_HEADER_NAME: &str = "Location";
-const RANGE_HEADER_NAME: &str = "Range";
-const DOCKER_CONTENT_DIGEST_HEADER_NAME: &str = "Docker-Content-Digest";
+pub mod container_spec;
+pub mod images;
 
-#[get("/v2")]
-pub fn get_spec_compliance() -> () {
-    ()
+pub const INTERNAL_SERVER_ERROR: &str = "INTERNAL_SERVER_ERROR";
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ErrorResponse {
+    error: String,
 }

@@ -52,7 +52,7 @@ pub async fn get_blob<'a>(
             println!("Blob exists {}", blob.digest);
             GetBlobResponse::Found(GetBlobResponseData {
                 file,
-                content_type: ContentType::TAR,
+                content_type: ContentType::GZIP,
                 digest: Header::new(DOCKER_CONTENT_DIGEST_HEADER_NAME, blob.digest),
             })
         }

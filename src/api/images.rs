@@ -1,7 +1,7 @@
 use docker_api::{
     models::ImageBuildChunk,
-    opts::{ContainerCreateOpts, ContainerFilter, ContainerListOpts, PullOpts},
-    Docker,
+    opts::{ContainerCreateOpts, PullOpts},
+    Container, Docker,
 };
 use rocket::{futures::StreamExt, serde::json::Json, State};
 use serde::{Deserialize, Serialize};
@@ -134,13 +134,19 @@ pub async fn run_image(
     }
 
     RunImageResponse::Sucess(Json(RunImageResponseData {
-        name: container_name,
+        name: container.id().to_string(),
     }))
 }
 
 #[derive(Serialize, Deserialize)]
+pub enum ContainerStatus {
+    Running,
+    Dead,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct GetContainerResponseData {
-    status: String,
+    status: ContainerStatus,
 }
 
 #[derive(Responder)]
@@ -153,39 +159,47 @@ pub enum GetContainerResponse {
     Failure(String),
 }
 
-#[get("/images/status/<name>")]
-pub async fn get_container_status(name: String, docker: &State<Docker>) -> GetContainerResponse {
+#[get("/images/status/<id>")]
+pub async fn get_container_status(id: String, docker: &State<Docker>) -> GetContainerResponse {
     let containers = docker.containers();
+    let container = containers.get(id);
 
-    let filters = vec![ContainerFilter::Name(name)];
-    let containers = match containers
-        .list(
-            &ContainerListOpts::builder()
-                .filter(filters.into_iter())
-                .build(),
-        )
-        .await
-    {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("Failed to retrieve containers, err: {e:?}");
-            return GetContainerResponse::Failure(String::from("Failed to retrieve containers"));
-        }
-    };
-
-    let container = match containers.len() {
-        0 => return GetContainerResponse::NotFound(()),
-        1 => containers.first().unwrap(), // We have ensured that there is at least 1 container
-        len => {
-            println!("Multiple containers ({len}) found with the same name? Using the first one");
-            containers.first().unwrap() // We have ensured that there is at least 1 container
+    let container_status = match get_status(container).await {
+        Some(s) => s,
+        None => {
+            eprintln!("Failed to get container state");
+            return GetContainerResponse::Failure(String::from("Failed to get container state"));
         }
     };
 
     GetContainerResponse::Success(Json(GetContainerResponseData {
-        status: container.state.clone().unwrap_or_else(|| {
-            eprintln!("Failed to retrieve container state?");
-            String::from("Unknown")
-        }),
+        status: container_status,
     }))
+}
+
+async fn get_status(container: Container) -> Option<ContainerStatus> {
+    let state = match container.inspect().await {
+        Ok(o) => o,
+        Err(e) => {
+            eprintln!("Failed to inspect container, err: {e:?}");
+            return None;
+        }
+    }
+    .state?;
+
+    let running = state.running?;
+    let dead = state.dead?;
+    let oom_killed = state.oom_killed?;
+    if !running || dead || oom_killed {
+        if state.exit_code.is_some() && state.error.is_some() {
+            eprintln!(
+                "Container seems to have gone awry (exited with code {:?}), error: {:?}",
+                state.exit_code, state.error
+            );
+        }
+
+        return Some(ContainerStatus::Dead);
+    }
+
+    Some(ContainerStatus::Running)
 }

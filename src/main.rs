@@ -43,6 +43,10 @@ async fn rocket() -> _ {
         .await
         .expect("Failed to run migrations");
 
+    // TODO: avoid hardcoded URL
+    let docker = docker_api::Docker::new(config.docker_socket_url.clone())
+        .expect("Failed to connect to docker");
+
     rocket::build()
         .mount(
             "/",
@@ -56,7 +60,15 @@ async fn rocket() -> _ {
                 api::container_spec::manifests::get_manifest,
             ],
         )
-        .mount("/api", routes![api::images::get_images])
+        .mount(
+            "/api",
+            routes![
+                api::images::get_images,
+                api::images::run_image,
+                api::images::get_container_status
+            ],
+        )
         .manage(db_pool)
         .manage(config)
+        .manage(docker)
 }

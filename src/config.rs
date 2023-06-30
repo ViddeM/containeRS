@@ -16,6 +16,8 @@ pub struct Config {
     pub database_url: String,
     pub log_db_statements: bool,
     pub storage_directory: String,
+    pub docker_socket_url: String,
+    pub registry_url: String,
 }
 
 impl Config {
@@ -25,6 +27,8 @@ impl Config {
             database_url: load_env_str("DATABASE_URL")?,
             log_db_statements: load_env_bool("LOG_DB_STATEMENTS")?,
             storage_directory: load_env_str("STORAGE_DIRECTORY")?,
+            docker_socket_url: load_env_str("DOCKER_SOCKET_URL")?,
+            registry_url: load_env_str("REGISTRY_URL")?,
         })
     }
 }

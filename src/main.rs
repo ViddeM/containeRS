@@ -71,7 +71,13 @@ async fn rocket() -> _ {
             ],
         )
         .mount("/public", FileServer::from("static/public"))
-        .mount("/web", routes![api::frontend::main_view::get_main_view])
+        .mount(
+            "/web",
+            routes![
+                api::frontend::main_view::get_main_view,
+                api::frontend::image_view::get_image_view
+            ],
+        )
         .manage(db_pool)
         .manage(config)
         .manage(docker)

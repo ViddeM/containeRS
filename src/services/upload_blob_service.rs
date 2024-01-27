@@ -12,17 +12,16 @@ use crate::{
 
 const PG_UNIQUE_CONSTRAINT_ERROR_CODE: &str = "23505";
 
-pub async fn create_session(db_pool: &Pool<DB>, namespace: String) -> RegistryResult<Uuid> {
+pub async fn create_session(db_pool: &Pool<DB>, namespace: &str) -> RegistryResult<Uuid> {
     let mut transaction = db::new_transaction(db_pool).await?;
 
-    let repository = match repository_repository::insert(&mut transaction, namespace.clone()).await
-    {
+    let repository = match repository_repository::insert(&mut transaction, namespace).await {
         Ok(r) => r,
         Err(RegistryError::SqlxError(err)) => {
             // Reset the transaction as the old one is cancelled.
             transaction.rollback().await?;
             transaction = db::new_transaction(db_pool).await?;
-            get_repository_if_exists(err, &mut transaction, namespace).await?
+            get_repository_if_exists(err, &mut transaction, &namespace).await?
         }
         Err(e) => return Err(e),
     };
@@ -39,7 +38,7 @@ pub async fn create_session(db_pool: &Pool<DB>, namespace: String) -> RegistryRe
 async fn get_repository_if_exists(
     err: sqlx::Error,
     transaction: &mut Transaction<'_, DB>,
-    namespace: String,
+    namespace: &str,
 ) -> RegistryResult<Repository> {
     if let Some(db_err) = err.as_database_error() {
         if let Some(code) = db_err.code() {

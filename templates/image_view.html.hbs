@@ -18,16 +18,14 @@
       <h1>Dockeriboiyo</h1>
     </header>
     <main>
-      <form class="card">
-        <input type="search" maxlength="100" placeholder="search" />
-        <button>search</button>
-      </form>
       <div class="card column">
-        <h2>Images</h2>
-        {{#each images}}
+        <a href="/web">Back</a>
+        <h2>{{name}}</h2>
+        {{#each tags}}
           <div class="row">
             <p>{{name}}</p>
-            <a href="/web/r/{{name}}"> -- GOTO</a>
+            ::
+            <p>{{update_date}}</p>
           </div>
         {{/each}}
       </div>

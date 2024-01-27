@@ -86,7 +86,7 @@ pub async fn post_create_session<'a>(
     name: &str,
     db_pool: &State<Pool<DB>>,
 ) -> CreateSessionResponse<'a> {
-    match services::upload_blob_service::create_session(db_pool, name.to_string()).await {
+    match services::upload_blob_service::create_session(db_pool, name).await {
         Ok(session_id) => CreateSessionResponse::Success(CreateSessionResponseData {
             response: "Session created successfully",
             location: Header::new(LOCATION_HEADER_NAME, session_id.to_string()),

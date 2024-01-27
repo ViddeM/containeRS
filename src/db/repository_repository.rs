@@ -6,7 +6,7 @@ use super::DB;
 
 pub async fn insert(
     transaction: &mut Transaction<'_, DB>,
-    namespace: String,
+    namespace: &str,
 ) -> RegistryResult<Repository> {
     Ok(sqlx::query_as!(
         Repository,
@@ -23,7 +23,7 @@ RETURNING id, namespace_name, created_at
 
 pub async fn find_by_name(
     transaction: &mut Transaction<'_, DB>,
-    namespace: String,
+    namespace: &str,
 ) -> RegistryResult<Repository> {
     Ok(sqlx::query_as!(
         Repository,

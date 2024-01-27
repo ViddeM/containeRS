@@ -12,14 +12,14 @@ use crate::{
     api::INTERNAL_SERVER_ERROR,
     config::Config,
     db::DB,
-    services::get_images_service::{self, Repository},
+    services::get_images_service::{self, Image},
 };
 
 use super::ErrorResponse;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ImagesResponse {
-    repositories: Vec<Repository>,
+    repositories: Vec<Image>,
 }
 
 #[derive(Responder, Debug)]

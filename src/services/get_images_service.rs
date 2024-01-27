@@ -1,15 +1,34 @@
 use serde::{Deserialize, Serialize};
-use sqlx::Pool;
+use sqlx::{
+    types::chrono::{DateTime, Utc},
+    Pool,
+};
 
 use crate::{
     db::{manifest_repository, new_transaction, repository_repository, DB},
+    models::manifest::Manifest,
     registry_error::RegistryResult,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Repository {
-    name: String,
-    tags: Vec<String>,
+    pub name: String,
+    pub tags: Vec<Tag>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Tag {
+    pub tag: String,
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<Manifest> for Tag {
+    fn from(value: Manifest) -> Self {
+        Self {
+            tag: value.tag,
+            created_at: value.created_at,
+        }
+    }
 }
 
 pub async fn get_all_images(db_pool: &Pool<DB>) -> RegistryResult<Vec<Repository>> {
@@ -27,7 +46,13 @@ pub async fn get_all_images(db_pool: &Pool<DB>) -> RegistryResult<Vec<Repository
         .await?;
         mapped.push(Repository {
             name: repository.namespace_name,
-            tags: manifests.into_iter().map(|manifest| manifest.tag).collect(),
+            tags: manifests
+                .into_iter()
+                .map(|manifest| Tag {
+                    tag: manifest.tag,
+                    created_at: manifest.created_at,
+                })
+                .collect(),
         });
     }
 

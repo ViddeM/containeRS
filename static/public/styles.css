@@ -1,0 +1,16 @@
+body {
+  background-color: #c0c0c0;
+  color: black;
+  font-family: "Commissioner", sans-serif;
+}
+
+.images-table {
+  border-spacing: 0;
+  border: 1px solid black;
+  border-radius: 5px;
+}
+
+.images-table th {
+  background-color: #909090;
+  border-bottom: 1px solid black;
+}

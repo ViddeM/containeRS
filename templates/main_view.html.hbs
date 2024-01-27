@@ -1,0 +1,50 @@
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Commissioner&display=swap"
+      rel="stylesheet"
+    />
+    <script
+      src="https://unpkg.com/htmx.org@1.9.10"
+      integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC"
+      crossorigin="anonymous"
+    ></script>
+    <link rel="stylesheet" href="/public/styles.css" />
+  </head>
+  <body>
+    <h1>ドッカーボーイは最低だ</h1>
+    <table class="images-table">
+      <thead>
+        <tr>
+          <th>Image</th>
+          <th>
+            TAG
+          </th>
+          <th>
+            DATE
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each images}}
+          <tr>
+            <td colspan="3">
+              <h4>{{name}}</h4>
+            </td>
+          </tr>
+
+          {{#each tags}}
+            <tr>
+              <td></td>
+              <td>{{tag}}</td>
+              <td>{{created_at}}</td>
+            </tr>
+          {{/each}}
+        {{/each}}
+
+      </tbody>
+    </table>
+  </body>
+</html>

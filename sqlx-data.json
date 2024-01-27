@@ -1,0 +1,652 @@
+{
+  "db": "PostgreSQL",
+  "157c5bfe0594f6005cc59f66159417f887f35965aa66ec46ffec8b0d306b7068": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repository",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "digest",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "\nINSERT INTO blob(repository, digest)\nVALUES          ($1,         $2)\nRETURNING id, repository, digest, created_at\n    "
+  },
+  "1b52e88ce7fc71920a259c7a0044c2f50077364ef411838c7ff3f07455fdf0ef": {
+    "describe": {
+      "columns": [
+        {
+          "name": "manifest_id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "blob_id",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "media_type",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "size",
+          "ordinal": 3,
+          "type_info": "Int8"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\nSELECT manifest_id, blob_id, media_type, size, created_at\nFROM manifest_layer\nWHERE manifest_id = $1 AND blob_id = $2\n        "
+  },
+  "2c934ce9c9c7762558c4f570ee0379746a9d5b45c57c6046643bba4554daa75d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repository",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "tag",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "blob_id",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "content_type_top",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "content_type_sub",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "\nSELECT m.id, m.repository, m.tag, m.blob_id, m.content_type_top, m.content_type_sub, m.created_at\nFROM manifest m\nINNER JOIN blob b ON m.blob_id = b.id\nWHERE m.repository = $1 AND b.digest = $2\n        "
+  },
+  "39f81572a6907b570c7895a671befd740e6ddbc22f40ea4297974a03af2f5d54": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "namespace_name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\nINSERT INTO repository(namespace_name)\nVALUES                ($1)\nRETURNING id, namespace_name, created_at\n        "
+  },
+  "3ba848f2cc895f004b284b0207edc0b5c861e1a9377d448b5b6791573fc6d039": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "\nUPDATE upload_session\nSET is_finished=TRUE\nWHERE id = $1 AND repository = $2\n        "
+  },
+  "48e505b5616edddbe6fee9693bb43ec30c6a3f82c07e0f27c2bc512337f6c03b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repository",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "tag",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "blob_id",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "content_type_top",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "content_type_sub",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "\nSELECT id, repository, tag, blob_id, content_type_top, content_type_sub, created_at\nFROM manifest\nWHERE repository = $1 AND tag = $2\n    "
+  },
+  "5bbafec426505370794bc5490d88ab5233058e930e06fa0b735ab0607b15ba28": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repository",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "digest",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "\nSELECT id, repository, digest, created_at\nFROM blob\nWHERE id = $1 AND repository = $2\n    "
+  },
+  "5dea1705b4c37924b05ed31ad85ee6102be176fc9b0b2e01bdcf304a1ece702d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repository",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "tag",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "blob_id",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "content_type_top",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "content_type_sub",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Uuid",
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "\nINSERT INTO manifest(repository, tag, blob_id, content_type_top, content_type_sub)\nVALUES              ($1,         $2,  $3,      $4,               $5)\nRETURNING id, repository, tag, blob_id, content_type_top, content_type_sub, created_at\n        "
+  },
+  "6ea75a57ff13758c2fdf38852fb80832efe901dc0b928e260f2a3e554ec8ed19": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repository",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "tag",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "blob_id",
+          "ordinal": 3,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "content_type_top",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "content_type_sub",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\nSELECT id, repository, tag, blob_id, content_type_top, content_type_sub, created_at\nFROM manifest\nWHERE repository = $1\n        "
+  },
+  "817b412edc091b2891d73d7aa21318c48ba08197dbdc00f479a14aa06147e749": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "namespace_name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\nSELECT id, namespace_name, created_at\nFROM repository\nWHERE namespace_name = $1\n        "
+  },
+  "8ddf5e0be9d9706ce73bc6d580b68a8d428be01213502dad530f43f4f168065a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "previous_session",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "digest",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "repository",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "is_finished",
+          "ordinal": 5,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        true,
+        true,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Uuid"
+        ]
+      }
+    },
+    "query": "\nINSERT INTO upload_session(digest, repository, previous_session)\nVALUES                    ($1,     $2,         $3)\nRETURNING id, previous_session, digest, repository, created_at, is_finished\n    "
+  },
+  "bc430ecce55bc7c3bef6308820919bfb07e31bc41dce02d1ab1eb6a5aa8d5643": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "previous_session",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "digest",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "repository",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "is_finished",
+          "ordinal": 5,
+          "type_info": "Bool"
+        }
+      ],
+      "nullable": [
+        false,
+        true,
+        true,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "\nSELECT id, previous_session, digest, repository, created_at, is_finished\nFROM upload_session\nWHERE id = $1 AND repository = $2\n    "
+  },
+  "df456dacd63cc7bbadd154d284252587a74953c5f933871b6f65fcd8901f9197": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "repository",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "digest",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "\nSELECT id, repository, digest, created_at\nFROM blob\nWHERE digest = $1 AND repository = $2\n    "
+  },
+  "fcc8077c5069d1e499a354d078d07d836e81fde88fe9c053ff33fe570fa181c2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "namespace_name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\nSELECT id, namespace_name, created_at\nFROM repository\n        "
+  },
+  "fe87bfcb7b6a7e1fe6b74f6a01dc55827d5ba109ba4a74fb6c90e5a1a9df4992": {
+    "describe": {
+      "columns": [
+        {
+          "name": "manifest_id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "blob_id",
+          "ordinal": 1,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "media_type",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "size",
+          "ordinal": 3,
+          "type_info": "Int8"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Uuid",
+          "Text",
+          "Int8"
+        ]
+      }
+    },
+    "query": "\nINSERT INTO manifest_layer(manifest_id, blob_id, media_type, size)\nVALUES                    ($1,          $2,      $3,         $4)\nRETURNING manifest_id, blob_id, media_type, size, created_at\n        "
+  }
+}

@@ -3,6 +3,8 @@
 use std::str::FromStr;
 
 use config::Config;
+use rocket::fs::FileServer;
+use rocket_dyn_templates::Template;
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions},
     ConnectOptions,
@@ -68,7 +70,10 @@ async fn rocket() -> _ {
                 api::images::get_container_status
             ],
         )
+        .mount("/public", FileServer::from("static/public"))
+        .mount("/web", routes![api::frontend::main_view::get_main_view])
         .manage(db_pool)
         .manage(config)
         .manage(docker)
+        .attach(Template::fairing())
 }

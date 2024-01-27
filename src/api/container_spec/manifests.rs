@@ -103,7 +103,7 @@ impl<'r> FromRequest<'r> for ManifestHeaders {
                 Ok(val) => val,
                 Err(e) => {
                     error!("Failed to parse content_length header, err: {e:?}");
-                    return request::Outcome::Failure((
+                    return request::Outcome::Error((
                         Status::BadRequest,
                         PutManifestResponse::BadRequest(format!(
                             "Invalid header {CONTENT_LENGTH_HEADER_NAME}"
@@ -113,7 +113,7 @@ impl<'r> FromRequest<'r> for ManifestHeaders {
             },
             None => {
                 error!("Missing content_length header");
-                return request::Outcome::Failure((
+                return request::Outcome::Error((
                     Status::BadRequest,
                     PutManifestResponse::BadRequest(format!(
                         "Missing header {CONTENT_LENGTH_HEADER_NAME}"
@@ -126,7 +126,7 @@ impl<'r> FromRequest<'r> for ManifestHeaders {
             Some(h) => h.to_string(),
             None => {
                 error!("Missing content_type header");
-                return request::Outcome::Failure((
+                return request::Outcome::Error((
                     Status::BadRequest,
                     PutManifestResponse::BadRequest(format!(
                         "Missing header {CONTENT_TYPE_HEADER_NAME}"

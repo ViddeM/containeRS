@@ -21,14 +21,12 @@ pub async fn find_manifest(
 
     let manifest = if reference.starts_with("sha256:") {
         println!("Identified as a digest {reference}, retrieving manifest from that");
-        Some(
-            manifest_repository::find_by_repository_and_digest(
-                &mut transaction,
-                namespace.clone(),
-                reference.to_string(),
-            )
-            .await?,
+        manifest_repository::find_by_repository_and_digest_optional(
+            &mut transaction,
+            namespace.clone(),
+            reference.to_string(),
         )
+        .await?
     } else {
         println!("Assumed to be tag {reference}, retrieving manifest from that");
         manifest_repository::find_by_repository_and_tag(

@@ -7,9 +7,9 @@ services:
       POSTGRES_USER: registry-rs
       POSTGRES_PASSWORD: password
     ports:
-      - 5432:5432
+      - 5433:5432
 
   adminer:
     image: adminer
     ports:
-      - 8081:8080
+      - 8089:8080

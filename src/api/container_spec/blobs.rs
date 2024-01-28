@@ -104,7 +104,10 @@ pub async fn post_create_session<'a>(
     match services::upload_blob_service::create_session(db_pool, &auth.username, name).await {
         Ok(session_id) => CreateSessionResponse::Success(CreateSessionResponseData {
             response: "Session created successfully",
-            location: Header::new(LOCATION_HEADER_NAME, session_id.to_string()),
+            location: Header::new(
+                LOCATION_HEADER_NAME,
+                format!("/v2/{name}/blobs/uploads/{session_id}"),
+            ),
         }),
         Err(e) => {
             error!("Failed to create upload session, err: {e:?}");
@@ -175,7 +178,10 @@ pub async fn patch_upload_blob<'a>(
         Ok(new_session_id) => {
             return UploadBlobResponse::Success(UploadBlobResponseData {
                 response: "It went well?",
-                location: Header::new(LOCATION_HEADER_NAME, new_session_id.to_string()),
+                location: Header::new(
+                    LOCATION_HEADER_NAME,
+                    format!("/v2/{name}/blobs/uploads/{new_session_id}"),
+                ),
                 range: Header::new(RANGE_HEADER_NAME, format!("0-{}", blob_length)),
             })
         }

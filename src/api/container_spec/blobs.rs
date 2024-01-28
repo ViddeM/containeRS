@@ -14,7 +14,10 @@ use crate::{
     services::{self, get_blob_service, upload_blob_service},
 };
 
-use super::{DOCKER_CONTENT_DIGEST_HEADER_NAME, LOCATION_HEADER_NAME, RANGE_HEADER_NAME};
+use super::{
+    errors::UnauthorizedResponse, Auth, AuthFailure, DOCKER_CONTENT_DIGEST_HEADER_NAME,
+    LOCATION_HEADER_NAME, RANGE_HEADER_NAME,
+};
 
 #[derive(Responder)]
 pub struct GetBlobResponseData<'a> {
@@ -77,16 +80,28 @@ pub struct CreateSessionResponseData<'a> {
 pub enum CreateSessionResponse<'a> {
     #[response(status = 202)]
     Success(CreateSessionResponseData<'a>),
+    #[response(status = 401)]
+    Unauthorized(UnauthorizedResponse),
     #[response(status = 500)]
     Failure(&'a str),
 }
 
 #[post("/v2/<name>/blobs/uploads")]
 pub async fn post_create_session<'a>(
+    auth: Result<Auth, AuthFailure>,
     name: &str,
     db_pool: &State<Pool<DB>>,
 ) -> CreateSessionResponse<'a> {
-    match services::upload_blob_service::create_session(db_pool, name).await {
+    let auth = match auth {
+        Ok(auth) => auth,
+        Err(AuthFailure::Unauthorized(resp)) => return CreateSessionResponse::Unauthorized(resp),
+        Err(AuthFailure::InternalServerError(err)) => {
+            println!("Unexpected auth failure {err:?}");
+            return CreateSessionResponse::Failure("An unexpected error occurred");
+        }
+    };
+
+    match services::upload_blob_service::create_session(db_pool, &auth.username, name).await {
         Ok(session_id) => CreateSessionResponse::Success(CreateSessionResponseData {
             response: "Session created successfully",
             location: Header::new(LOCATION_HEADER_NAME, session_id.to_string()),
@@ -113,10 +128,13 @@ pub enum UploadBlobResponse<'a> {
     Failure(&'a str),
     #[response(status = 400)]
     InvalidSessionId(&'a str),
+    #[response(status = 401)]
+    Unauthorized(UnauthorizedResponse),
 }
 
 #[patch("/v2/<name>/blobs/uploads/<session_id>", data = "<blob>")]
 pub async fn patch_upload_blob<'a>(
+    auth: Result<Auth, AuthFailure>,
     name: &str,
     session_id: &'a str,
     blob: Vec<u8>,
@@ -125,6 +143,16 @@ pub async fn patch_upload_blob<'a>(
     db_pool: &State<Pool<DB>>,
     config: &State<Config>,
 ) -> UploadBlobResponse<'a> {
+    if let Err(e) = auth {
+        return match e {
+            AuthFailure::Unauthorized(resp) => UploadBlobResponse::Unauthorized(resp),
+            AuthFailure::InternalServerError(err) => {
+                println!("Unexpected auth error, err {err:?}");
+                return UploadBlobResponse::Failure("An unexpected error occurred");
+            }
+        };
+    };
+
     // Validate the session ID
     let session_id = match Uuid::from_str(session_id) {
         Ok(id) => id,
@@ -172,15 +200,28 @@ pub enum FinishBlobUploadResponse<'a> {
     Failure(&'a str),
     #[response(status = 400)]
     InvalidSessionId(&'a str),
+    #[response(status = 401)]
+    Unauthorized(UnauthorizedResponse),
 }
 
 #[put("/v2/<name>/blobs/uploads/<session_id>?<digest>")]
 pub async fn put_upload_blob<'a>(
+    auth: Result<Auth, AuthFailure>,
     name: &str,
     session_id: &'a str,
     digest: &'a str,
     db_pool: &State<Pool<DB>>,
 ) -> FinishBlobUploadResponse<'a> {
+    if let Err(e) = auth {
+        return match e {
+            AuthFailure::Unauthorized(resp) => FinishBlobUploadResponse::Unauthorized(resp),
+            AuthFailure::InternalServerError(err) => {
+                println!("Unexpected auth error, err: {err:?}");
+                FinishBlobUploadResponse::Failure("An unexpected failure occured")
+            }
+        };
+    }
+
     let session_id = match Uuid::from_str(session_id) {
         Ok(id) => id,
         Err(e) => {

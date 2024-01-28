@@ -69,6 +69,26 @@ WHERE m.repository = $1 AND b.digest = $2
     .await?)
 }
 
+pub async fn find_by_repository_and_digest_optional(
+    transaction: &mut Transaction<'_, DB>,
+    repository: String,
+    digest: String,
+) -> RegistryResult<Option<Manifest>> {
+    Ok(sqlx::query_as!(
+        Manifest,
+        r#"
+SELECT m.id, m.repository, m.tag, m.blob_id, m.content_type_top, m.content_type_sub, m.created_at
+FROM manifest m
+INNER JOIN blob b ON m.blob_id = b.id
+WHERE m.repository = $1 AND b.digest = $2
+        "#,
+        repository,
+        digest
+    )
+    .fetch_optional(transaction)
+    .await?)
+}
+
 pub async fn find_all_by_repository(
     transaction: &mut Transaction<'_, DB>,
     repository: String,

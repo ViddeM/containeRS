@@ -1,8 +1,17 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+CREATE TABLE owner (
+     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+     username TEXT NOT NULL UNIQUE,
+
+     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE repository (
      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
      
+     owner UUID NOT NULL REFERENCES owner(id),
      namespace_name TEXT NOT NULL UNIQUE,
      
      created_at TIMESTAMPTZ NOT NULL DEFAULT now()

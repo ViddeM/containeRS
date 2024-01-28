@@ -2,7 +2,6 @@
 
 use std::str::FromStr;
 
-use api::container_spec::errors::container_spec_unauthorized;
 use config::Config;
 use rocket::fs::FileServer;
 use rocket_dyn_templates::Template;
@@ -51,7 +50,6 @@ async fn rocket() -> _ {
         .expect("Failed to connect to docker");
 
     rocket::build()
-        .register("/", catchers![container_spec_unauthorized])
         .mount(
             "/",
             routes![

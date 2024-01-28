@@ -1,6 +1,8 @@
 use rocket::{http::Header, serde::json::Json};
 use serde::{Deserialize, Serialize};
 
+use crate::config::Config;
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum OCIError {
@@ -42,22 +44,27 @@ pub struct ContainerSpecError {
     detail: String,
 }
 
-#[derive(Responder)]
+#[derive(Responder, Debug)]
 #[response(status = 401, content_type = "json")]
 pub struct UnauthorizedResponse {
     inner: Json<ContainerSpecErrorResponse>,
     www_authenticate: Header<'static>,
 }
 
-#[catch(401)]
-pub fn container_spec_unauthorized() -> UnauthorizedResponse {
-    UnauthorizedResponse {
-        inner: Json(ContainerSpecErrorResponse {
-            errors: vec![OCIError::unauthorized_response()],
-        }),
-        www_authenticate: Header::new(
-            "www-authenticate",
-            r#"Bearer realm="http://localhost:8000/api/oauth/token",service="dockerboyo",scope="""#,
-        ),
+impl UnauthorizedResponse {
+    pub fn new(config: &Config) -> Self {
+        Self {
+            inner: Json(ContainerSpecErrorResponse {
+                errors: vec![OCIError::unauthorized_response()],
+            }),
+            www_authenticate: Header::new(
+                "www-authenticate",
+                // r#"Bearer realm="asd123", service="ser123", scope="""#,
+                format!(
+                    r#"Bearer realm="{}", service="{}", scope=""#,
+                    config.accounts_rs_auth_endpoint, config.auth_service
+                ),
+            ),
+        }
     }
 }

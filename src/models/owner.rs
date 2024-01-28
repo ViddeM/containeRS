@@ -2,9 +2,8 @@ use sqlx::types::chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, sqlx::FromRow)]
-pub struct Repository {
+pub struct Owner {
     pub id: Uuid,
-    pub owner: Uuid,
-    pub namespace_name: String,
+    pub username: String,
     pub created_at: DateTime<Utc>,
 }

@@ -18,6 +18,9 @@ pub struct Config {
     pub storage_directory: String,
     pub docker_socket_url: String,
     pub registry_url: String,
+    pub auth_service: String,
+    pub accounts_rs_auth_endpoint: String,
+    pub accounts_rs_me_endpoint: String,
 }
 
 impl Config {
@@ -29,6 +32,9 @@ impl Config {
             storage_directory: load_env_str("STORAGE_DIRECTORY")?,
             docker_socket_url: load_env_str("DOCKER_SOCKET_URL")?,
             registry_url: load_env_str("REGISTRY_URL")?,
+            auth_service: load_env_str("AUTH_SERVICE")?,
+            accounts_rs_auth_endpoint: load_env_str("ACCOUNTS_RS_AUTH_ENDPOINT")?,
+            accounts_rs_me_endpoint: load_env_str("ACCOUNTS_RS_ME_ENDPOINT")?,
         })
     }
 }

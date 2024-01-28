@@ -5,26 +5,41 @@ use uuid::Uuid;
 
 use crate::{
     config::Config,
-    db::{self, blob_repository, repository_repository, upload_session_repository, DB},
+    db::{
+        self, blob_repository, owner_repository, repository_repository, upload_session_repository,
+        DB,
+    },
     models::repository::Repository,
     registry_error::{RegistryError, RegistryResult},
 };
 
 const PG_UNIQUE_CONSTRAINT_ERROR_CODE: &str = "23505";
 
-pub async fn create_session(db_pool: &Pool<DB>, namespace: &str) -> RegistryResult<Uuid> {
+pub async fn create_session(
+    db_pool: &Pool<DB>,
+    username: &str,
+    namespace: &str,
+) -> RegistryResult<Uuid> {
     let mut transaction = db::new_transaction(db_pool).await?;
 
-    let repository = match repository_repository::insert(&mut transaction, namespace).await {
-        Ok(r) => r,
-        Err(RegistryError::SqlxError(err)) => {
-            // Reset the transaction as the old one is cancelled.
-            transaction.rollback().await?;
-            transaction = db::new_transaction(db_pool).await?;
-            get_repository_if_exists(err, &mut transaction, &namespace).await?
-        }
-        Err(e) => return Err(e),
-    };
+    let owner =
+        if let Some(o) = owner_repository::find_by_username(&mut transaction, username).await? {
+            o
+        } else {
+            owner_repository::insert(&mut transaction, username).await?
+        };
+
+    let repository =
+        match repository_repository::insert(&mut transaction, &owner.id, namespace).await {
+            Ok(r) => r,
+            Err(RegistryError::SqlxError(err)) => {
+                // Reset the transaction as the old one is cancelled.
+                transaction.rollback().await?;
+                transaction = db::new_transaction(db_pool).await?;
+                get_repository_if_exists(err, &mut transaction, &namespace).await?
+            }
+            Err(e) => return Err(e),
+        };
 
     let session =
         upload_session_repository::insert(&mut transaction, None, None, repository.namespace_name)

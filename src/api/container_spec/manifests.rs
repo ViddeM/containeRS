@@ -7,14 +7,15 @@ use rocket::{
 use sqlx::Pool;
 
 use crate::{
+    api::container_spec::AuthFailure,
     config::Config,
     db::DB,
     services::{self, get_manifest_service},
 };
 
 use super::{
-    CONTENT_LENGTH_HEADER_NAME, CONTENT_TYPE_HEADER_NAME, DOCKER_CONTENT_DIGEST_HEADER_NAME,
-    LOCATION_HEADER_NAME,
+    errors::UnauthorizedResponse, Auth, CONTENT_LENGTH_HEADER_NAME, CONTENT_TYPE_HEADER_NAME,
+    DOCKER_CONTENT_DIGEST_HEADER_NAME, LOCATION_HEADER_NAME,
 };
 
 #[derive(Responder, Debug)]
@@ -86,6 +87,8 @@ pub enum PutManifestResponse<'a> {
     BadRequest(String),
     #[response(status = 500)]
     Failure(&'a str),
+    #[response(status = 401)]
+    Unauthorized(UnauthorizedResponse),
 }
 
 pub struct ManifestHeaders {
@@ -144,6 +147,7 @@ impl<'r> FromRequest<'r> for ManifestHeaders {
 
 #[put("/v2/<name>/manifests/<reference>", data = "<manifest_data>")]
 pub async fn put_manifest<'a>(
+    auth: Result<Auth, AuthFailure>,
     name: &str,
     reference: &str,
     headers: ManifestHeaders,
@@ -151,6 +155,16 @@ pub async fn put_manifest<'a>(
     config: &State<Config>,
     db_pool: &State<Pool<DB>>,
 ) -> PutManifestResponse<'a> {
+    if let Err(e) = auth {
+        return match e {
+            AuthFailure::Unauthorized(resp) => PutManifestResponse::Unauthorized(resp),
+            AuthFailure::InternalServerError(err) => {
+                println!("An unexpected auth error, err: {err:?}");
+                PutManifestResponse::Failure("An unexpected error occurred")
+            }
+        };
+    }
+
     match services::upload_manifest_service::upload_manifest(
         name.to_string(),
         reference.to_string(),

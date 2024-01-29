@@ -7,6 +7,7 @@ pub struct Manifest {
     pub repository: String,
     pub tag: String,
     pub blob_id: Uuid,
+    pub digest: String,
     pub content_type_top: String,
     pub content_type_sub: String,
     pub created_at: DateTime<Utc>,

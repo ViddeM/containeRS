@@ -46,6 +46,7 @@ CREATE TABLE manifest (
      repository TEXT NOT NULL REFERENCES repository(namespace_name),
      tag TEXT NOT NULL,
      blob_id UUID NOT NULL REFERENCES blob(id),
+     digest TEXT NOT NULL,
      content_type_top TEXT NOT NULL,
      content_type_sub TEXT NOT NULL,
 

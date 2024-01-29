@@ -11,17 +11,23 @@ use crate::{
     registry_error::RegistryResult,
 };
 
+pub struct ManifestInfo {
+    pub manifest: Manifest,
+    pub blob: Blob,
+    pub named_file: NamedFile,
+}
+
 pub async fn find_manifest(
     db_pool: &Pool<DB>,
     namespace: String,
     reference: String,
     config: &Config,
-) -> RegistryResult<Option<(Manifest, Blob, NamedFile)>> {
+) -> RegistryResult<Option<ManifestInfo>> {
     let mut transaction = db::new_transaction(db_pool).await?;
 
     let manifest = if reference.starts_with("sha256:") {
         println!("Identified as a digest {reference}, retrieving manifest from that");
-        manifest_repository::find_by_repository_and_digest_optional(
+        manifest_repository::find_by_repository_and_reference_optional(
             &mut transaction,
             namespace.clone(),
             reference.to_string(),
@@ -32,7 +38,7 @@ pub async fn find_manifest(
         manifest_repository::find_by_repository_and_tag(
             &mut transaction,
             namespace.clone(),
-            reference,
+            reference.clone(),
         )
         .await?
     };
@@ -58,7 +64,11 @@ pub async fn find_manifest(
 
     let file = manifest_file(config, manifest.id).await?;
 
-    Ok(Some((manifest, blob, file)))
+    Ok(Some(ManifestInfo {
+        manifest,
+        blob,
+        named_file: file,
+    }))
 }
 
 async fn manifest_file(config: &Config, manifest_id: Uuid) -> RegistryResult<NamedFile> {

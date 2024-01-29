@@ -8,7 +8,7 @@ use super::DB;
 pub async fn insert(
     transaction: &mut Transaction<'_, DB>,
     repository: String,
-    digest: String,
+    digest: &str,
 ) -> RegistryResult<Blob> {
     Ok(sqlx::query_as!(
         Blob,
@@ -46,7 +46,7 @@ WHERE id = $1 AND repository = $2
 pub async fn find_by_repository_and_digest(
     transaction: &mut Transaction<'_, DB>,
     repository: String,
-    digest: String,
+    digest: &str,
 ) -> RegistryResult<Option<Blob>> {
     Ok(sqlx::query_as!(
         Blob,

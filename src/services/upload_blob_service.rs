@@ -158,7 +158,7 @@ pub async fn finish_blob_upload(
     )
     .await?;
 
-    let blob = blob_repository::insert(&mut transaction, session.repository, digest).await?;
+    let blob = blob_repository::insert(&mut transaction, session.repository, &digest).await?;
 
     transaction.commit().await?;
 

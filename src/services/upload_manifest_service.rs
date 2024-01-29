@@ -29,7 +29,8 @@ pub async fn upload_manifest(
         return Err(RegistryError::InvalidContentLength);
     }
 
-    // Validate the manifest
+    let calculated_digest = format!("sha256:{}", sha256::digest(data.as_slice()));
+
     let image_manifest = DockerImageManifestV2::parse(content_type, data.clone())?;
 
     let mut transaction = db::new_transaction(db_pool).await?;
@@ -37,7 +38,7 @@ pub async fn upload_manifest(
     let image_blob = blob_repository::find_by_repository_and_digest(
         &mut transaction,
         namespace.clone(),
-        image_manifest.config.digest.clone(),
+        &image_manifest.config.digest,
     )
     .await?
     .ok_or(RegistryError::InvalidDigest)?;
@@ -59,6 +60,7 @@ pub async fn upload_manifest(
                 namespace.clone(),
                 image_blob.id,
                 reference.clone(),
+                &calculated_digest,
                 APPLICATION_CONTENT_TYPE_TOP.to_string(),
                 DOCKER_IMAGE_MANIFEST_V2_CONTENT_TYPE_SUB.to_string(),
             )
@@ -70,7 +72,7 @@ pub async fn upload_manifest(
         let blob = blob_repository::find_by_repository_and_digest(
             &mut transaction,
             namespace.clone(),
-            layer.digest.clone(),
+            &layer.digest,
         )
         .await?
         .ok_or(RegistryError::InvalidDigest)?;
@@ -98,11 +100,11 @@ pub async fn upload_manifest(
         }
     }
 
-    transaction.commit().await?;
-
     save_file(manifest.id, config, data)?;
 
-    Ok((manifest.id, image_manifest.config.digest))
+    transaction.commit().await?;
+
+    Ok((manifest.id, calculated_digest))
 }
 
 fn save_file(manifest_id: Uuid, config: &Config, data: Vec<u8>) -> RegistryResult<()> {

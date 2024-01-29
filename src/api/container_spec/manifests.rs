@@ -50,13 +50,17 @@ pub async fn get_manifest<'a>(
     )
     .await
     {
-        Ok(Some((manifest, blob, file))) => {
             println!("Manifest found for {name}/{reference}");
+        Ok(Some(manifest_info)) => {
             GetManifestResponse::Success(GetManifestResponseData {
-                file: file,
+                file: manifest_info.named_file,
                 content_type: ContentType::new(
-                    manifest.content_type_top,
-                    manifest.content_type_sub,
+                    manifest_info.manifest.content_type_top,
+                    manifest_info.manifest.content_type_sub,
+                ),
+                docker_digest: Header::new(
+                    DOCKER_CONTENT_DIGEST_HEADER_NAME,
+                    manifest_info.manifest.digest,
                 ),
                 docker_digest: Header::new(DOCKER_CONTENT_DIGEST_HEADER_NAME, blob.digest),
             })

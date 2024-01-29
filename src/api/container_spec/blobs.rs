@@ -210,12 +210,14 @@ pub enum FinishBlobUploadResponse<'a> {
     Unauthorized(UnauthorizedResponse),
 }
 
-#[put("/v2/<name>/blobs/uploads/<session_id>?<digest>")]
+#[put("/v2/<name>/blobs/uploads/<session_id>?<digest>", data = "<blob>")]
 pub async fn put_upload_blob<'a>(
     auth: Result<Auth, AuthFailure>,
     name: &str,
     session_id: &'a str,
     digest: &'a str,
+    blob: Option<Vec<u8>>,
+    config: &State<Config>,
     db_pool: &State<Pool<DB>>,
 ) -> FinishBlobUploadResponse<'a> {
     if let Err(e) = auth {
@@ -234,6 +236,26 @@ pub async fn put_upload_blob<'a>(
             error!("Failed to parse session id ({session_id}), err: {e:?}");
             return FinishBlobUploadResponse::InvalidSessionId(session_id);
         }
+    };
+
+    let session_id = if let Some(blob) = blob {
+        match services::upload_blob_service::upload_blob(
+            db_pool,
+            name.to_string(),
+            session_id,
+            config,
+            blob,
+        )
+        .await
+        {
+            Ok(v) => v,
+            Err(err) => {
+                error!("Failed to upload blob during finish upload, err: {err:?}");
+                return FinishBlobUploadResponse::Failure("Failed to upload blob");
+            }
+        }
+    } else {
+        session_id
     };
 
     let blob_id = match upload_blob_service::finish_blob_upload(

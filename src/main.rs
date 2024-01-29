@@ -53,11 +53,10 @@ async fn rocket() -> _ {
         .mount(
             "/",
             routes![
-                api::container_spec::blobs::get_blob,
+                api::container_spec::blobs::read_blob::get_blob,
                 api::container_spec::get_spec_compliance,
-                api::container_spec::blobs::post_create_session,
-                api::container_spec::blobs::patch_upload_blob,
-                api::container_spec::blobs::put_upload_blob,
+                api::container_spec::blobs::streamed::post_create_session,
+                api::container_spec::blobs::streamed::put_upload_blob,
                 api::container_spec::manifests::put_manifest,
                 api::container_spec::manifests::get_manifest,
             ],

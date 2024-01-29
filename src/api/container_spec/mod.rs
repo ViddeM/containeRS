@@ -21,6 +21,7 @@ const CONTENT_LENGTH_HEADER_NAME: &str = "Content-Length";
 const LOCATION_HEADER_NAME: &str = "Location";
 const RANGE_HEADER_NAME: &str = "Range";
 const DOCKER_CONTENT_DIGEST_HEADER_NAME: &str = "Docker-Content-Digest";
+const APPLICATION_TYPE_OCTET_STREAM: &str = "application/octet-stream";
 
 pub struct Auth {
     username: String,

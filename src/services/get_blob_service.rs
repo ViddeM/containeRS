@@ -45,7 +45,7 @@ async fn blob_file(config: &Config, digest: String) -> RegistryResult<NamedFile>
         "{}/blobs/sha256/{}.tar.gz",
         config.storage_directory, digest,
     );
-    println!("Looking for blob at path {file_path}");
+    info!("Looking for blob at path {file_path}");
     let blob_path = Path::new(file_path.as_str());
     let file = NamedFile::open(blob_path).await?;
 

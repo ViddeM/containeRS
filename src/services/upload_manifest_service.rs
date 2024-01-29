@@ -51,7 +51,7 @@ pub async fn upload_manifest(
     .await?
     {
         Some(m) => {
-            println!("Manifest already exists, overwriting");
+            warn!("Manifest already exists, overwriting");
             m
         }
         None => {
@@ -85,7 +85,7 @@ pub async fn upload_manifest(
         .await?
         {
             Some(_) => {
-                println!("Manifest layer already exists, skipping DB insertion");
+                info!("Manifest layer already exists, skipping DB insertion");
             }
             None => {
                 manifest_layer_repository::insert(
@@ -111,12 +111,12 @@ fn save_file(manifest_id: Uuid, config: &Config, data: Vec<u8>) -> RegistryResul
     let path_name = format!("{}/manifests", config.storage_directory);
     let path = Path::new(path_name.as_str());
     fs::create_dir_all(path)?;
-    println!("Creating directories {path:?}");
+    info!("Creating directories {path:?}");
 
     let file_path_name = format!("{}.json", manifest_id.to_string());
     let file_path = Path::new(file_path_name.as_str());
     let mut file = fs::File::create(path.join(file_path))?;
-    println!("File stored at {file_path:?}");
+    info!("File stored at {file_path:?}");
 
     file.write_all(&data)?;
 

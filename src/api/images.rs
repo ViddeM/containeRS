@@ -81,9 +81,9 @@ pub async fn run_image(
 
     while let Some(pull_result) = stream.next().await {
         match pull_result {
-            Ok(ImageBuildChunk::Digest { aux }) => println!("Image pull DIGEST aux: {aux:?}"),
+            Ok(ImageBuildChunk::Digest { aux }) => info!("Image pull DIGEST aux: {aux:?}"),
             Ok(ImageBuildChunk::Update { stream }) => {
-                println!("Image pull UPDATE stream: {stream}")
+                info!("Image pull UPDATE stream: {stream}")
             }
             Ok(ImageBuildChunk::PullStatus {
                 status,
@@ -91,14 +91,14 @@ pub async fn run_image(
                 progress: _,
                 progress_detail: _,
             }) => {
-                println!("Image pull PULL STATUS status: {status}")
+                info!("Image pull PULL STATUS status: {status}")
             }
             Ok(ImageBuildChunk::Error {
                 error,
                 error_detail,
-            }) => println!("Image pull ERROR '{error}', details: '{error_detail:?}'"),
+            }) => error!("Image pull ERROR '{error}', details: '{error_detail:?}'"),
             Err(e) => {
-                eprintln!("Err: {e:?}");
+                error!("Err: {e:?}");
                 return RunImageResponse::Failure(String::from(
                     "Failed to pull image, maybe it doesn't exist?",
                 ));
@@ -122,7 +122,7 @@ pub async fn run_image(
     {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("Failed to create container, err: {e:?}");
+            error!("Failed to create container, err: {e:?}");
             return RunImageResponse::Failure(String::from(
                 "Failed to create container from image :(",
             ));
@@ -130,7 +130,7 @@ pub async fn run_image(
     };
 
     if let Err(e) = container.start().await {
-        eprintln!("Failed to start container, err: {e:?}");
+        error!("Failed to start container, err: {e:?}");
     }
 
     RunImageResponse::Sucess(Json(RunImageResponseData {
@@ -167,7 +167,7 @@ pub async fn get_container_status(id: String, docker: &State<Docker>) -> GetCont
     let container_status = match get_status(container).await {
         Some(s) => s,
         None => {
-            eprintln!("Failed to get container state");
+            error!("Failed to get container state");
             return GetContainerResponse::Failure(String::from("Failed to get container state"));
         }
     };
@@ -181,7 +181,7 @@ async fn get_status(container: Container) -> Option<ContainerStatus> {
     let state = match container.inspect().await {
         Ok(o) => o,
         Err(e) => {
-            eprintln!("Failed to inspect container, err: {e:?}");
+            error!("Failed to inspect container, err: {e:?}");
             return None;
         }
     }
@@ -192,7 +192,7 @@ async fn get_status(container: Container) -> Option<ContainerStatus> {
     let oom_killed = state.oom_killed?;
     if !running || dead || oom_killed {
         if state.exit_code.is_some() && state.error.is_some() {
-            eprintln!(
+            error!(
                 "Container seems to have gone awry (exited with code {:?}), error: {:?}",
                 state.exit_code, state.error
             );

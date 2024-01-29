@@ -50,8 +50,8 @@ pub async fn get_manifest<'a>(
     )
     .await
     {
-            println!("Manifest found for {name}/{reference}");
         Ok(Some(manifest_info)) => {
+            info!("Manifest found for {name}/{reference}");
             GetManifestResponse::Success(GetManifestResponseData {
                 file: manifest_info.named_file,
                 content_type: ContentType::new(
@@ -62,11 +62,10 @@ pub async fn get_manifest<'a>(
                     DOCKER_CONTENT_DIGEST_HEADER_NAME,
                     manifest_info.manifest.digest,
                 ),
-                docker_digest: Header::new(DOCKER_CONTENT_DIGEST_HEADER_NAME, blob.digest),
             })
         }
         Ok(None) => {
-            println!("Failed to find manifest {name}/{reference}");
+            warn!("Failed to find manifest {name}/{reference}");
             GetManifestResponse::FileNotFound("File not found")
         }
         Err(e) => {
@@ -163,7 +162,7 @@ pub async fn put_manifest<'a>(
         return match e {
             AuthFailure::Unauthorized(resp) => PutManifestResponse::Unauthorized(resp),
             AuthFailure::InternalServerError(err) => {
-                println!("An unexpected auth error, err: {err:?}");
+                error!("An unexpected auth error, err: {err:?}");
                 PutManifestResponse::Failure("An unexpected error occurred")
             }
         };

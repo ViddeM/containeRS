@@ -26,7 +26,7 @@ pub async fn find_manifest(
     let mut transaction = db::new_transaction(db_pool).await?;
 
     let manifest = if reference.starts_with("sha256:") {
-        println!("Identified as a digest {reference}, retrieving manifest from that");
+        info!("Identified as a digest {reference}, retrieving manifest from that");
         manifest_repository::find_by_repository_and_reference_optional(
             &mut transaction,
             namespace.clone(),
@@ -34,7 +34,7 @@ pub async fn find_manifest(
         )
         .await?
     } else {
-        println!("Assumed to be tag {reference}, retrieving manifest from that");
+        info!("Assumed to be tag {reference}, retrieving manifest from that");
         manifest_repository::find_by_repository_and_tag(
             &mut transaction,
             namespace.clone(),
@@ -77,7 +77,7 @@ async fn manifest_file(config: &Config, manifest_id: Uuid) -> RegistryResult<Nam
         config.storage_directory,
         manifest_id.to_string()
     );
-    println!("Looking for manifest at path {file_path}");
+    info!("Looking for manifest at path {file_path}");
     let manifest_path = Path::new(file_path.as_str());
     let file = NamedFile::open(manifest_path).await?;
 

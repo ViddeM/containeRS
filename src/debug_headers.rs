@@ -11,7 +11,7 @@ impl<'r> FromRequest<'r> for DebugHeaders {
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
         req.headers().iter().for_each(|h| {
-            println!("HEADER: {h:?}");
+            info!("HEADER: {h:?}");
         });
 
         request::Outcome::Success(Self {})

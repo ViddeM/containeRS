@@ -47,9 +47,8 @@ impl<'r> FromRequest<'r> for Auth {
             }
         };
 
-        println!("HEADERS: {:?}", req.headers());
         let Some(auth_header) = req.headers().get_one("authorization") else {
-            println!("Request missing authorization header");
+            warn!("Request missing authorization header");
             return request::Outcome::Error((
                 Status::Unauthorized,
                 AuthFailure::Unauthorized(UnauthorizedResponse::new(config)),
@@ -57,7 +56,7 @@ impl<'r> FromRequest<'r> for Auth {
         };
 
         if !auth_header.starts_with("Bearer ") {
-            println!("Auth header doesn't start with 'Bearer '?");
+            error!("Auth header doesn't start with 'Bearer '?");
             return request::Outcome::Error((
                 Status::Unauthorized,
                 AuthFailure::Unauthorized(UnauthorizedResponse::new(config)),
@@ -73,7 +72,7 @@ impl<'r> FromRequest<'r> for Auth {
         {
             Ok(resp) => resp,
             Err(e) => {
-                println!("Failed to send user request to accounts service, err: {e:?}");
+                error!("Failed to send user request to accounts service, err: {e:?}");
                 return request::Outcome::Error((
                     Status::Unauthorized,
                     AuthFailure::Unauthorized(UnauthorizedResponse::new(config)),
@@ -83,7 +82,7 @@ impl<'r> FromRequest<'r> for Auth {
 
         let resp_status = resp.status();
         if !resp_status.is_success() {
-            println!("Got error response (status {resp_status}) from accounts service");
+            error!("Got error response (status {resp_status}) from accounts service");
             return request::Outcome::Error((
                 Status::Unauthorized,
                 AuthFailure::Unauthorized(UnauthorizedResponse::new(config)),
@@ -93,7 +92,7 @@ impl<'r> FromRequest<'r> for Auth {
         let user_info: AccountsRsUserResponse = match resp.json().await {
             Ok(u) => u,
             Err(e) => {
-                println!("Failed to deserialize user request to accounts service, err: {e:?}");
+                error!("Failed to deserialize user request to accounts service, err: {e:?}");
                 return request::Outcome::Error((
                     Status::Unauthorized,
                     AuthFailure::Unauthorized(UnauthorizedResponse::new(config)),
@@ -123,7 +122,7 @@ pub fn get_spec_compliance(auth: Result<Auth, AuthFailure>) -> SpecComplianceRes
         Ok(_) => SpecComplianceResponse::Ok(()),
         Err(AuthFailure::Unauthorized(resp)) => SpecComplianceResponse::Unauthorized(resp),
         Err(AuthFailure::InternalServerError(err)) => {
-            println!("Internal server error {err:?}");
+            error!("Internal server error {err:?}");
             SpecComplianceResponse::InternalServerError(())
         }
     }

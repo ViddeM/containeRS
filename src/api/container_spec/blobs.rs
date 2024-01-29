@@ -52,7 +52,7 @@ pub async fn get_blob<'a>(
     .await
     {
         Ok(Some((blob, file))) => {
-            println!("Blob exists {}", blob.digest);
+            info!("Blob exists {}", blob.digest);
             GetBlobResponse::Found(GetBlobResponseData {
                 file,
                 content_type: ContentType::GZIP,
@@ -60,7 +60,7 @@ pub async fn get_blob<'a>(
             })
         }
         Ok(None) => {
-            println!("Blob does not exist {digest}");
+            info!("Blob does not exist {digest}");
             GetBlobResponse::NotFound(())
         }
         Err(e) => {
@@ -96,7 +96,7 @@ pub async fn post_create_session<'a>(
         Ok(auth) => auth,
         Err(AuthFailure::Unauthorized(resp)) => return CreateSessionResponse::Unauthorized(resp),
         Err(AuthFailure::InternalServerError(err)) => {
-            println!("Unexpected auth failure {err:?}");
+            error!("Unexpected auth failure {err:?}");
             return CreateSessionResponse::Failure("An unexpected error occurred");
         }
     };
@@ -150,7 +150,7 @@ pub async fn patch_upload_blob<'a>(
         return match e {
             AuthFailure::Unauthorized(resp) => UploadBlobResponse::Unauthorized(resp),
             AuthFailure::InternalServerError(err) => {
-                println!("Unexpected auth error, err {err:?}");
+                error!("Unexpected auth error, err {err:?}");
                 return UploadBlobResponse::Failure("An unexpected error occurred");
             }
         };
@@ -224,7 +224,7 @@ pub async fn put_upload_blob<'a>(
         return match e {
             AuthFailure::Unauthorized(resp) => FinishBlobUploadResponse::Unauthorized(resp),
             AuthFailure::InternalServerError(err) => {
-                println!("Unexpected auth error, err: {err:?}");
+                error!("Unexpected auth error, err: {err:?}");
                 FinishBlobUploadResponse::Failure("An unexpected failure occured")
             }
         };
@@ -291,7 +291,7 @@ pub async fn put_upload_blob<'a>(
 // impl UploadBlobRequestHeaders {
 //     fn retrieve<'r>(request: &'r Request<'_>) -> Result<Self, String> {
 //         request.headers().iter().for_each(|h| {
-//             println!("\tGot header {h:?}");
+//             info!("\tGot header {h:?}");
 //         });
 
 //         let content_type = request

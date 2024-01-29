@@ -24,7 +24,7 @@ RETURNING manifest_id, blob_id, media_type, size, created_at
         media_type,
         size
     )
-    .fetch_one(transaction)
+    .fetch_one(&mut **transaction)
     .await?)
 }
 
@@ -43,6 +43,6 @@ WHERE manifest_id = $1 AND blob_id = $2
         manifest_id,
         blob_id
     )
-    .fetch_optional(transaction)
+    .fetch_optional(&mut **transaction)
     .await?)
 }

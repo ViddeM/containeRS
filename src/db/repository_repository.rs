@@ -20,7 +20,7 @@ RETURNING id, owner, namespace_name, created_at
         owner,
         namespace
     )
-    .fetch_one(transaction)
+    .fetch_one(&mut **transaction)
     .await?)
 }
 
@@ -37,7 +37,7 @@ WHERE namespace_name = $1
         "#,
         namespace
     )
-    .fetch_one(transaction)
+    .fetch_one(&mut **transaction)
     .await?)
 }
 
@@ -49,6 +49,6 @@ SELECT id, owner, namespace_name, created_at
 FROM repository
         "#
     )
-    .fetch_all(transaction)
+    .fetch_all(&mut **transaction)
     .await?)
 }

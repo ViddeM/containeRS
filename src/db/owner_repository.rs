@@ -17,7 +17,7 @@ RETURNING id, username, created_at
         "#,
         username,
     )
-    .fetch_one(transaction)
+    .fetch_one(&mut **transaction)
     .await?)
 }
 
@@ -34,6 +34,6 @@ WHERE username = $1
     "#,
         username
     )
-    .fetch_optional(transaction)
+    .fetch_optional(&mut **transaction)
     .await?)
 }

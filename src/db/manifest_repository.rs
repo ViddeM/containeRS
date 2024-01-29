@@ -28,7 +28,7 @@ RETURNING id, repository, tag, blob_id, digest, content_type_top, content_type_s
         content_type_top,
         content_type_sub,
     )
-    .fetch_one(transaction)
+    .fetch_one(&mut **transaction)
     .await?)
 }
 
@@ -47,7 +47,7 @@ WHERE repository = $1 AND tag = $2
         repository,
         tag
     )
-    .fetch_optional(transaction)
+    .fetch_optional(&mut **transaction)
     .await?)
 }
 
@@ -67,7 +67,7 @@ WHERE m.repository = $1 AND b.digest = $2
         repository,
         digest
     )
-    .fetch_one(transaction)
+    .fetch_one(&mut **transaction)
     .await?)
 }
 
@@ -86,7 +86,7 @@ WHERE m.repository = $1 AND m.tag = $2
         repository,
         reference
     )
-    .fetch_optional(transaction)
+    .fetch_optional(&mut **transaction)
     .await?)
 }
 
@@ -103,6 +103,6 @@ WHERE repository = $1
         "#,
         repository
     )
-    .fetch_all(transaction)
+    .fetch_all(&mut **transaction)
     .await?)
 }

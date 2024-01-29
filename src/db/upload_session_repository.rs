@@ -22,7 +22,7 @@ RETURNING id, previous_session, digest, repository, created_at, is_finished
         repository,
         prev_session,
     )
-    .fetch_one(transaction)
+    .fetch_one(&mut **transaction)
     .await?)
 }
 
@@ -41,7 +41,7 @@ WHERE id = $1 AND repository = $2
         session_id,
         repository
     )
-    .execute(transaction)
+    .execute(&mut **transaction)
     .await?;
 
     Ok(())
@@ -62,6 +62,6 @@ WHERE id = $1 AND repository = $2
         session_id,
         repository
     )
-    .fetch_optional(transaction)
+    .fetch_optional(&mut **transaction)
     .await?)
 }

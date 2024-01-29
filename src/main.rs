@@ -31,7 +31,7 @@ async fn rocket() -> _ {
         PgConnectOptions::from_str(&config.database_url).expect("Invalid database url provided");
 
     if !config.log_db_statements {
-        pg_options.disable_statement_logging();
+        pg_options = pg_options.disable_statement_logging();
     }
 
     let db_pool = PgPoolOptions::new()

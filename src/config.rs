@@ -25,7 +25,7 @@ pub struct Config {
 
 impl Config {
     pub fn new() -> ConfigResult<Config> {
-        dotenv::dotenv().ok();
+        dotenvy::dotenv().ok();
         Ok(Self {
             database_url: load_env_str("DATABASE_URL")?,
             log_db_statements: load_env_bool("LOG_DB_STATEMENTS")?,

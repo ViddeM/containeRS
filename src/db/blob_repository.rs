@@ -20,7 +20,7 @@ RETURNING id, repository, digest, created_at
         repository,
         digest,
     )
-    .fetch_one(transaction)
+    .fetch_one(&mut **transaction)
     .await?)
 }
 
@@ -39,7 +39,7 @@ WHERE id = $1 AND repository = $2
         blob_id,
         repository
     )
-    .fetch_optional(transaction)
+    .fetch_optional(&mut **transaction)
     .await?)
 }
 
@@ -58,6 +58,6 @@ WHERE digest = $1 AND repository = $2
         digest,
         repository
     )
-    .fetch_optional(transaction)
+    .fetch_optional(&mut **transaction)
     .await?)
 }

@@ -8,22 +8,43 @@ use super::DB;
 pub async fn insert(
     transaction: &mut Transaction<'_, DB>,
     prev_session: Option<Uuid>,
-    digest: Option<String>,
+    starting_byte_index: i32,
     repository: String,
 ) -> RegistryResult<UploadSession> {
     Ok(sqlx::query_as!(
         UploadSession,
         r#"
-INSERT INTO upload_session(digest, repository, previous_session)
-VALUES                    ($1,     $2,         $3)
-RETURNING id, previous_session, digest, repository, created_at, is_finished
+INSERT INTO upload_session(digest, starting_byte_index, repository, previous_session)
+VALUES                    (null,   $1,                  $2,         $3)
+RETURNING id, previous_session, starting_byte_index, digest, repository, created_at, is_finished
     "#,
-        digest,
+        starting_byte_index,
         repository,
         prev_session,
     )
     .fetch_one(&mut **transaction)
     .await?)
+}
+
+pub async fn set_digest(
+    transaction: &mut Transaction<'_, DB>,
+    id: Uuid,
+    digest: String,
+) -> RegistryResult<()> {
+    sqlx::query_as!(
+        UploadSession,
+        r#"
+UPDATE upload_session
+SET digest = $1
+WHERE id = $2
+        "#,
+        digest,
+        id
+    )
+    .execute(&mut **transaction)
+    .await?;
+
+    Ok(())
 }
 
 pub async fn set_finished(
@@ -49,13 +70,13 @@ WHERE id = $1 AND repository = $2
 
 pub async fn find_by_repository_and_id(
     transaction: &mut Transaction<'_, DB>,
-    repository: String,
+    repository: &str,
     session_id: Uuid,
 ) -> RegistryResult<Option<UploadSession>> {
     Ok(sqlx::query_as!(
         UploadSession,
         r#"
-SELECT id, previous_session, digest, repository, created_at, is_finished
+SELECT id, previous_session, starting_byte_index, digest, repository, created_at, is_finished
 FROM upload_session
 WHERE id = $1 AND repository = $2
     "#,

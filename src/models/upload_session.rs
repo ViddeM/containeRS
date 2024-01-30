@@ -5,6 +5,7 @@ use uuid::Uuid;
 pub struct UploadSession {
     pub id: Uuid,
     pub previous_session: Option<Uuid>,
+    pub starting_byte_index: i32,
     pub digest: Option<String>,
     pub repository: String,
     pub created_at: DateTime<Utc>,

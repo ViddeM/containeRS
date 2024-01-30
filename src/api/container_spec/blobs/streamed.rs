@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::{
     api::container_spec::{
         blobs::BlobUploadHeaders, errors::UnauthorizedResponse, Auth, AuthFailure,
-        LOCATION_HEADER_NAME,
+        DOCKER_UPLOAD_UUID_HEADER_NAME, LOCATION_HEADER_NAME, RANGE_HEADER_NAME,
     },
     config::Config,
     db::DB,
@@ -16,11 +16,17 @@ use crate::{
 
 use super::OctetStream;
 
+macro_rules! header {
+    ($name: expr, $value: expr) => {
+        Header::new($name, $value)
+    };
+}
+
 macro_rules! location {
     ($name: expr, $session_id: expr) => {
-        Header::new(
+        header!(
             LOCATION_HEADER_NAME,
-            format!("/v2/{}/blobs/uploads/{}", $name, $session_id),
+            format!("/v2/{}/blobs/uploads/{}", $name, $session_id)
         )
     };
 }
@@ -34,6 +40,8 @@ macro_rules! location {
 pub struct CreateSessionResponseData<'a> {
     response: &'a str,
     location: Header<'a>,
+    range: Header<'a>,
+    docker_upload_uuid: Header<'a>,
 }
 
 #[derive(Responder)]
@@ -73,17 +81,24 @@ pub async fn post_create_session<'a>(
     CreateSessionResponse::Success(CreateSessionResponseData {
         response: "Session created successfully",
         location: location!(name, initial_session_id),
+        range: header!(RANGE_HEADER_NAME, "0-0"),
+        docker_upload_uuid: header!(
+            DOCKER_UPLOAD_UUID_HEADER_NAME,
+            initial_session_id.to_string()
+        ),
     })
 }
 
 #[derive(Responder, Debug)]
-struct UploadBlobResponseData<'a> {
+pub struct UploadBlobResponseData<'a> {
     data: (),
     location: Header<'a>,
+    range: Header<'a>,
+    docker_upload_uuid: Header<'a>,
 }
 
 #[derive(Responder)]
-enum UploadBlobResponse<'a> {
+pub enum UploadBlobResponse<'a> {
     #[response(status = 202)]
     Success(UploadBlobResponseData<'a>),
     #[response(status = 401)]
@@ -119,12 +134,8 @@ pub async fn patch_upload_blob<'a>(
         }
     };
 
-    let new_session_id = match upload_blob_service::upload_blob(
-        db_pool,
-        name.to_string(),
-        session_id,
-        config,
-        blob.data,
+    let new_session = match upload_blob_service::upload_blob(
+        db_pool, name, session_id, config, blob.data,
     )
     .await
     {
@@ -137,7 +148,12 @@ pub async fn patch_upload_blob<'a>(
 
     UploadBlobResponse::Success(UploadBlobResponseData {
         data: (),
-        location: location!(name, new_session_id),
+        location: location!(name, new_session.id),
+        range: header!(
+            RANGE_HEADER_NAME,
+            format!("0-{}", new_session.starting_byte_index)
+        ),
+        docker_upload_uuid: header!(DOCKER_UPLOAD_UUID_HEADER_NAME, new_session.id.to_string()),
     })
 }
 
@@ -180,14 +196,6 @@ pub async fn put_upload_blob<'a>(
         };
     }
 
-    let blob = blob.data;
-
-    if blob.len() != upload_headers.content_length {
-        return FinishBlobUploadResponse::Failure(
-            "Content length doesn't match the provided blobs length",
-        );
-    }
-
     let session_id = match Uuid::from_str(session_id) {
         Ok(id) => id,
         Err(e) => {
@@ -196,21 +204,32 @@ pub async fn put_upload_blob<'a>(
         }
     };
 
-    let session_id =
-        match upload_blob_service::upload_blob(db_pool, name.to_string(), session_id, config, blob)
-            .await
-        {
+    let final_session_id = if let Some(blob) = blob {
+        let blob = blob.data;
+
+        if blob.len() != upload_headers.content_length {
+            return FinishBlobUploadResponse::Failure(
+                "Content length doesn't match the provided blobs length",
+            );
+        }
+
+        match upload_blob_service::upload_blob(db_pool, name, session_id, config, blob).await {
             Ok(s) => s,
             Err(err) => {
                 error!("Failed to upload blob during finish upload, err: {err:?}");
                 return FinishBlobUploadResponse::Failure("Failed to upload blob");
             }
-        };
+        }
+        .id
+    } else {
+        session_id
+    };
 
     let blob_id = match upload_blob_service::finish_blob_upload(
         db_pool,
+        config,
         name.to_string(),
-        session_id,
+        final_session_id,
         digest.to_string(),
     )
     .await

@@ -22,6 +22,7 @@ CREATE TABLE upload_session (
      repository TEXT NOT NULL REFERENCES repository(namespace_name),
      
      digest TEXT,
+     starting_byte_index INTEGER NOT NULL,
      previous_session UUID REFERENCES upload_session(id),
      is_finished BOOLEAN NOT NULL DEFAULT FALSE,
 

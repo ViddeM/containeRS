@@ -1,7 +1,8 @@
 use rocket::{
+    data::{self, FromData},
     http::Status,
     request::{self, FromRequest},
-    Request,
+    Data, Request,
 };
 
 use super::{
@@ -15,9 +16,50 @@ pub mod monolithic;
 pub mod read_blob;
 pub mod streamed;
 
+pub struct OctetStream {
+    data: Vec<u8>,
+}
+
+#[rocket::async_trait]
+impl<'r> FromData<'r> for OctetStream {
+    type Error = String;
+
+    async fn from_data(
+        req: &'r Request<'_>,
+        data: Data<'r>,
+    ) -> data::Outcome<'r, Self, Self::Error> {
+        let Some(content_type) = req.headers().get_one(CONTENT_TYPE_HEADER_NAME) else {
+            return data::Outcome::Error((
+                Status::BadRequest,
+                format!("Missing {CONTENT_TYPE_HEADER_NAME} header"),
+            ));
+        };
+
+        if content_type != APPLICATION_TYPE_OCTET_STREAM {
+            return data::Outcome::Error((
+                Status::BadRequest,
+                format!("Invalid content-type for blob upload, expected {APPLICATION_TYPE_OCTET_STREAM}, got {content_type}")
+            ));
+        }
+
+        let bytes = match Vec::<u8>::from_data(req, data).await {
+            data::Outcome::Success(d) => d,
+            data::Outcome::Forward(resp) => return data::Outcome::Forward(resp),
+            rocket::outcome::Outcome::Error((_, err)) => {
+                error!("Failed to read body as Vec<u8>, err: {err:?}");
+                return rocket::outcome::Outcome::Error((
+                    Status::BadRequest,
+                    "Invalid request body".to_string(),
+                ));
+            }
+        };
+
+        data::Outcome::Success(OctetStream { data: bytes })
+    }
+}
+
 #[derive(Debug)]
 pub struct BlobUploadHeaders {
-    pub content_type: String,
     pub content_length: usize,
 }
 
@@ -27,21 +69,6 @@ impl<'r> FromRequest<'r> for BlobUploadHeaders {
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
         let headers = req.headers();
-
-        let Some(content_type) = headers.get_one(CONTENT_TYPE_HEADER_NAME) else {
-            return request::Outcome::Error((
-                Status::BadRequest,
-                format!("Missing {CONTENT_TYPE_HEADER_NAME} header"),
-            ));
-        };
-
-        if content_type != APPLICATION_TYPE_OCTET_STREAM {
-            return request::Outcome::Error((
-                Status::BadRequest,
-                format!("Invalid content-type for blob upload, expected {APPLICATION_TYPE_OCTET_STREAM}, got {content_type}")
-            ));
-        }
-
         let Some(content_length) = headers.get_one(CONTENT_LENGTH_HEADER_NAME) else {
             return request::Outcome::Error((
                 Status::BadRequest,
@@ -56,10 +83,7 @@ impl<'r> FromRequest<'r> for BlobUploadHeaders {
             ));
         };
 
-        request::Outcome::Success(BlobUploadHeaders {
-            content_type: content_type.into(),
-            content_length,
-        })
+        request::Outcome::Success(BlobUploadHeaders { content_length })
     }
 }
 

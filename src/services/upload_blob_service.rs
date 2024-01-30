@@ -110,7 +110,7 @@ fn save_file(
     config: &Config,
     blob: Vec<u8>,
 ) -> RegistryResult<()> {
-    let path_name = format!("{}/blobs/sha256", config.storage_directory);
+    let path_name = format!("{}/uploads/blobs/sha256", config.storage_directory);
     let path = Path::new(path_name.as_str());
     fs::create_dir_all(path)?;
 

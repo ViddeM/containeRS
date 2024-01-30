@@ -7,16 +7,28 @@ use uuid::Uuid;
 use crate::{
     api::container_spec::{
         blobs::BlobUploadHeaders, errors::UnauthorizedResponse, Auth, AuthFailure,
-        CONTENT_LENGTH_HEADER_NAME, LOCATION_HEADER_NAME,
+        LOCATION_HEADER_NAME,
     },
     config::Config,
     db::DB,
     services::upload_blob_service,
 };
 
-/// This flow consists of two steps:
+use super::OctetStream;
+
+macro_rules! location {
+    ($name: expr, $session_id: expr) => {
+        Header::new(
+            LOCATION_HEADER_NAME,
+            format!("/v2/{}/blobs/uploads/{}", $name, $session_id),
+        )
+    };
+}
+
+/// This flow doesn't seem to be covered by the specification?
 ///  1. a POST to create the session and receive an upload location.
-///  2. a PUT to the previously provided location with the actual data.
+///  2. a PATCH to upload the chunk in its entirty.
+///  3. a POST to end the upload.
 
 #[derive(Responder, Debug)]
 pub struct CreateSessionResponseData<'a> {
@@ -49,19 +61,84 @@ pub async fn post_create_session<'a>(
         }
     };
 
-    match upload_blob_service::create_session(db_pool, &auth.username, name).await {
-        Ok(session_id) => CreateSessionResponse::Success(CreateSessionResponseData {
-            response: "Session created successfully",
-            location: Header::new(
-                LOCATION_HEADER_NAME,
-                format!("/v2/{name}/blobs/uploads/{session_id}"),
-            ),
-        }),
-        Err(e) => {
-            error!("Failed to create upload session, err: {e:?}");
-            CreateSessionResponse::Failure("Failed to ceate session")
+    let initial_session_id =
+        match upload_blob_service::create_session(db_pool, &auth.username, name).await {
+            Ok(id) => id,
+            Err(e) => {
+                error!("Failed to create upload session, err: {e:?}");
+                return CreateSessionResponse::Failure("Failed to ceate session");
+            }
+        };
+
+    CreateSessionResponse::Success(CreateSessionResponseData {
+        response: "Session created successfully",
+        location: location!(name, initial_session_id),
+    })
+}
+
+#[derive(Responder, Debug)]
+struct UploadBlobResponseData<'a> {
+    data: (),
+    location: Header<'a>,
+}
+
+#[derive(Responder)]
+enum UploadBlobResponse<'a> {
+    #[response(status = 202)]
+    Success(UploadBlobResponseData<'a>),
+    #[response(status = 401)]
+    Unauthorized(UnauthorizedResponse),
+    #[response(status = 500)]
+    Failure(&'a str),
+}
+
+#[patch("/v2/<name>/blobs/uploads/<session_id>", data = "<blob>")]
+pub async fn patch_upload_blob<'a>(
+    auth: Result<Auth, AuthFailure>,
+    name: &str,
+    session_id: &'a str,
+    blob: OctetStream,
+    config: &State<Config>,
+    db_pool: &State<Pool<DB>>,
+) -> UploadBlobResponse<'a> {
+    if let Err(err) = auth {
+        match err {
+            AuthFailure::Unauthorized(resp) => return UploadBlobResponse::Unauthorized(resp),
+            AuthFailure::InternalServerError(err) => {
+                error!("Unexpected auth failure {err:?}");
+                return UploadBlobResponse::Failure("An unexpected error occurred");
+            }
         }
-    }
+    };
+
+    let session_id = match Uuid::from_str(session_id) {
+        Ok(id) => id,
+        Err(e) => {
+            error!("Failed to parse session id ({session_id}), err: {e:?}");
+            return UploadBlobResponse::Failure("Invalid session ID");
+        }
+    };
+
+    let new_session_id = match upload_blob_service::upload_blob(
+        db_pool,
+        name.to_string(),
+        session_id,
+        config,
+        blob.data,
+    )
+    .await
+    {
+        Ok(id) => id,
+        Err(e) => {
+            error!("Failed to upload blob, err: {e:?}");
+            return UploadBlobResponse::Failure("Failed to upload blob");
+        }
+    };
+
+    UploadBlobResponse::Success(UploadBlobResponseData {
+        data: (),
+        location: location!(name, new_session_id),
+    })
 }
 
 #[derive(Responder, Debug)]
@@ -89,7 +166,7 @@ pub async fn put_upload_blob<'a>(
     session_id: &'a str,
     digest: &'a str,
     upload_headers: BlobUploadHeaders,
-    blob: Vec<u8>,
+    blob: Option<OctetStream>,
     config: &State<Config>,
     db_pool: &State<Pool<DB>>,
 ) -> FinishBlobUploadResponse<'a> {
@@ -102,6 +179,8 @@ pub async fn put_upload_blob<'a>(
             }
         };
     }
+
+    let blob = blob.data;
 
     if blob.len() != upload_headers.content_length {
         return FinishBlobUploadResponse::Failure(

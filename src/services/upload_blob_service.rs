@@ -168,8 +168,9 @@ pub async fn finish_blob_upload(
     upload_session_repository::set_finished(&mut transaction, session_id, namespace.clone())
         .await?;
 
-    let blob = blob_repository::insert(&mut transaction, namespace, &digest).await?;
-    save_blob_file(config, &digest, data.as_slice()).map_err(|err| {
+    let prefixed_digest = format!("sha256:{}", calculated_digest);
+    let blob = blob_repository::insert(&mut transaction, namespace, &prefixed_digest).await?;
+    save_blob_file(config, &calculated_digest, data.as_slice()).map_err(|err| {
         error!("Failed to save combined data to blob file, err: {err:?}");
         err
     })?;

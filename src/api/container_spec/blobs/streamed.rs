@@ -11,83 +11,17 @@ use crate::{
     },
     config::Config,
     db::DB,
+    header, location,
     services::upload_blob_service,
 };
 
 use super::OctetStream;
 
-macro_rules! header {
-    ($name: expr, $value: expr) => {
-        Header::new($name, $value)
-    };
-}
-
-macro_rules! location {
-    ($name: expr, $session_id: expr) => {
-        header!(
-            LOCATION_HEADER_NAME,
-            format!("/v2/{}/blobs/uploads/{}", $name, $session_id)
-        )
-    };
-}
-
 /// This flow doesn't seem to be covered by the specification?
-///  1. a POST to create the session and receive an upload location.
-///  2. a PATCH to upload the chunk in its entirty.
-///  3. a POST to end the upload.
-
-#[derive(Responder, Debug)]
-pub struct CreateSessionResponseData<'a> {
-    response: &'a str,
-    location: Header<'a>,
-    range: Header<'a>,
-    docker_upload_uuid: Header<'a>,
-}
-
-#[derive(Responder)]
-pub enum CreateSessionResponse<'a> {
-    #[response(status = 202)]
-    Success(CreateSessionResponseData<'a>),
-    #[response(status = 401)]
-    Unauthorized(UnauthorizedResponse),
-    #[response(status = 500)]
-    Failure(&'a str),
-}
-
-#[post("/v2/<name>/blobs/uploads")]
-pub async fn post_create_session<'a>(
-    auth: Result<Auth, AuthFailure>,
-    name: &str,
-    db_pool: &State<Pool<DB>>,
-) -> CreateSessionResponse<'a> {
-    let auth = match auth {
-        Ok(auth) => auth,
-        Err(AuthFailure::Unauthorized(resp)) => return CreateSessionResponse::Unauthorized(resp),
-        Err(AuthFailure::InternalServerError(err)) => {
-            error!("Unexpected auth failure {err:?}");
-            return CreateSessionResponse::Failure("An unexpected error occurred");
-        }
-    };
-
-    let initial_session_id =
-        match upload_blob_service::create_session(db_pool, &auth.username, name).await {
-            Ok(id) => id,
-            Err(e) => {
-                error!("Failed to create upload session, err: {e:?}");
-                return CreateSessionResponse::Failure("Failed to ceate session");
-            }
-        };
-
-    CreateSessionResponse::Success(CreateSessionResponseData {
-        response: "Session created successfully",
-        location: location!(name, initial_session_id),
-        range: header!(RANGE_HEADER_NAME, "0-0"),
-        docker_upload_uuid: header!(
-            DOCKER_UPLOAD_UUID_HEADER_NAME,
-            initial_session_id.to_string()
-        ),
-    })
-}
+/// This implementation is taken from Microsofts REST Api spec for the flow: https://learn.microsoft.com/en-us/rest/api/containerregistry/blob/start-upload?view=rest-containerregistry-2019-08-15&tabs=HTTP
+///  1. a POST to create the session and receive an upload location. (Is taken care of the generic way)
+///  2. a number of PATCH requests to upload the parts of the blob.
+///  3. a POST to end the upload (optionally with content).
 
 #[derive(Responder, Debug)]
 pub struct UploadBlobResponseData<'a> {
@@ -109,12 +43,12 @@ pub enum UploadBlobResponse<'a> {
 
 #[patch("/v2/<name>/blobs/uploads/<session_id>", data = "<blob>")]
 pub async fn patch_upload_blob<'a>(
+    config: &State<Config>,
+    db_pool: &State<Pool<DB>>,
     auth: Result<Auth, AuthFailure>,
     name: &str,
     session_id: &'a str,
     blob: OctetStream,
-    config: &State<Config>,
-    db_pool: &State<Pool<DB>>,
 ) -> UploadBlobResponse<'a> {
     if let Err(err) = auth {
         match err {

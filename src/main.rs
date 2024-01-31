@@ -55,7 +55,7 @@ async fn rocket() -> _ {
             routes![
                 api::container_spec::blobs::read_blob::get_blob,
                 api::container_spec::get_spec_compliance,
-                api::container_spec::blobs::streamed::post_create_session,
+                api::container_spec::blobs::create_session::post_create_session,
                 api::container_spec::blobs::streamed::patch_upload_blob,
                 api::container_spec::blobs::streamed::put_upload_blob,
                 api::container_spec::manifests::put_manifest,

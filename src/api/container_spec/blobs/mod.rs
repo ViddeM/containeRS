@@ -12,6 +12,7 @@ use super::{
 
 pub mod blobs;
 pub mod chunked;
+pub mod create_session;
 pub mod monolithic;
 pub mod read_blob;
 pub mod streamed;
@@ -128,4 +129,60 @@ impl<'r> FromRequest<'r> for UploadRangeHeader {
 
         request::Outcome::Success(UploadRangeHeader { start, end })
     }
+}
+
+pub struct ContentLength {
+    pub length: usize,
+}
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for ContentLength {
+    type Error = String;
+
+    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        let Some(content_length) = req.headers().get_one(CONTENT_RANGE_HEADER_NAME) else {
+            return request::Outcome::Error((
+                Status::BadRequest,
+                format!("Missing {CONTENT_RANGE_HEADER_NAME} header"),
+            ));
+        };
+
+        let length: usize = match content_length.parse() {
+            Ok(l) => l,
+            Err(err) => {
+                warn!("Received invalid content-length header {content_length}");
+                return request::Outcome::Error((
+                    Status::BadRequest,
+                    format!("Invalid {CONTENT_RANGE_HEADER_NAME} header"),
+                ));
+            }
+        };
+
+        request::Outcome::Success(ContentLength { length })
+    }
+}
+
+#[macro_export]
+macro_rules! header {
+    ($name: expr, $value: expr) => {
+        Header::new($name, $value)
+    };
+}
+
+#[macro_export]
+macro_rules! location {
+    ($name: expr, $session_id: expr) => {
+        location!($name, $session_id, false)
+    };
+    ($name: expr, $session_id: expr, $is_chunked: expr) => {
+        header!(
+            $crate::api::container_spec::LOCATION_HEADER_NAME,
+            format!(
+                "/v2/{}/blobs/{}uploads/{}",
+                $name,
+                if $is_chunked == true { "/chunked" } else { "" },
+                $session_id
+            )
+        )
+    };
 }

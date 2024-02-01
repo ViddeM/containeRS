@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::{
     api::container_spec::{
-        blobs::BlobUploadHeaders, errors::UnauthorizedResponse, Auth, AuthFailure,
+        blobs::utils::octet_stream::OctetStream, errors::UnauthorizedResponse, Auth, AuthFailure,
         DOCKER_UPLOAD_UUID_HEADER_NAME, LOCATION_HEADER_NAME, RANGE_HEADER_NAME,
     },
     config::Config,
@@ -15,7 +15,7 @@ use crate::{
     services::upload_blob_service,
 };
 
-use super::OctetStream;
+use super::utils::content_length::ContentLength;
 
 /// This flow doesn't seem to be covered by the specification?
 /// This implementation is taken from Microsofts REST Api spec for the flow: https://learn.microsoft.com/en-us/rest/api/containerregistry/blob/start-upload?view=rest-containerregistry-2019-08-15&tabs=HTTP
@@ -115,7 +115,7 @@ pub async fn put_upload_blob<'a>(
     name: &str,
     session_id: &'a str,
     digest: &'a str,
-    upload_headers: BlobUploadHeaders,
+    content_length: ContentLength,
     blob: Option<OctetStream>,
     config: &State<Config>,
     db_pool: &State<Pool<DB>>,
@@ -141,7 +141,7 @@ pub async fn put_upload_blob<'a>(
     let final_session_id = if let Some(blob) = blob {
         let blob = blob.data;
 
-        if blob.len() != upload_headers.content_length {
+        if blob.len() != content_length.length {
             return FinishBlobUploadResponse::Failure(
                 "Content length doesn't match the provided blobs length",
             );

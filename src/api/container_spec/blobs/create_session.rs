@@ -1,11 +1,10 @@
 use rocket::{http::Header, State};
 use sqlx::Pool;
 
-use crate::api::container_spec::blobs::ContentLength;
 use crate::{
     api::container_spec::{
-        errors::UnauthorizedResponse, Auth, AuthFailure, DOCKER_UPLOAD_UUID_HEADER_NAME,
-        RANGE_HEADER_NAME,
+        blobs::utils::content_length::ContentLength, errors::UnauthorizedResponse, Auth,
+        AuthFailure, DOCKER_UPLOAD_UUID_HEADER_NAME, RANGE_HEADER_NAME,
     },
     db::DB,
     header, location,

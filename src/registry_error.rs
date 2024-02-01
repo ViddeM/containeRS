@@ -24,6 +24,8 @@ pub enum RegistryError {
     InvalidManifestSchema(String),
     #[error("Serde json error")]
     SerdeJsonError(#[from] serde_json::Error),
+    #[error("Invalid content range")]
+    InvalidContentRange,
 }
 
 pub type RegistryResult<T> = Result<T, RegistryError>;

@@ -14,7 +14,7 @@ macro_rules! location {
         header!(
             $crate::api::container_spec::LOCATION_HEADER_NAME,
             format!(
-                "/v2/{}/blobs/{}uploads/{}",
+                "/v2/{}/blobs{}/uploads/{}",
                 $name,
                 if $is_chunked == true { "/chunked" } else { "" },
                 $session_id

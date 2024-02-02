@@ -6,6 +6,7 @@ use crate::{
         blobs::utils::content_length::ContentLength, errors::UnauthorizedResponse, Auth,
         AuthFailure, DOCKER_UPLOAD_UUID_HEADER_NAME, RANGE_HEADER_NAME,
     },
+    check_auth,
     db::DB,
     header, location,
     services::upload_blob_service,
@@ -36,14 +37,7 @@ pub async fn post_create_session<'a>(
     content_length: Option<ContentLength>,
     name: &str,
 ) -> CreateSessionResponse<'a> {
-    let auth = match auth {
-        Ok(auth) => auth,
-        Err(AuthFailure::Unauthorized(resp)) => return CreateSessionResponse::Unauthorized(resp),
-        Err(AuthFailure::InternalServerError(err)) => {
-            error!("Unexpected auth failure {err:?}");
-            return CreateSessionResponse::Failure("An unexpected error occurred");
-        }
-    };
+    let auth = check_auth!(auth, CreateSessionResponse);
 
     let is_chunked_flow = if let Some(length) = content_length {
         if length.length != 0 {

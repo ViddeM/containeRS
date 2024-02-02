@@ -9,6 +9,7 @@ use crate::{
         blobs::utils::octet_stream::OctetStream, errors::UnauthorizedResponse, Auth, AuthFailure,
         DOCKER_UPLOAD_UUID_HEADER_NAME, LOCATION_HEADER_NAME, RANGE_HEADER_NAME,
     },
+    check_auth,
     config::Config,
     db::DB,
     header, location,
@@ -50,15 +51,7 @@ pub async fn patch_upload_blob<'a>(
     session_id: &'a str,
     blob: OctetStream,
 ) -> UploadBlobResponse<'a> {
-    if let Err(err) = auth {
-        match err {
-            AuthFailure::Unauthorized(resp) => return UploadBlobResponse::Unauthorized(resp),
-            AuthFailure::InternalServerError(err) => {
-                error!("Unexpected auth failure {err:?}");
-                return UploadBlobResponse::Failure("An unexpected error occurred");
-            }
-        }
-    };
+    check_auth!(auth, UploadBlobResponse);
 
     let session_id = match Uuid::from_str(session_id) {
         Ok(id) => id,
@@ -120,15 +113,7 @@ pub async fn put_upload_blob<'a>(
     config: &State<Config>,
     db_pool: &State<Pool<DB>>,
 ) -> FinishBlobUploadResponse<'a> {
-    if let Err(e) = auth {
-        return match e {
-            AuthFailure::Unauthorized(resp) => FinishBlobUploadResponse::Unauthorized(resp),
-            AuthFailure::InternalServerError(err) => {
-                error!("Unexpected auth error, err: {err:?}");
-                FinishBlobUploadResponse::Failure("An unexpected failure occured")
-            }
-        };
-    }
+    check_auth!(auth, FinishBlobUploadResponse);
 
     let session_id = match Uuid::from_str(session_id) {
         Ok(id) => id,

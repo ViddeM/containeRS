@@ -25,16 +25,15 @@ macro_rules! location {
 
 #[macro_export]
 macro_rules! check_auth {
-    ($auth_result: expr, $err_type: ty) => {
-        if let Err(err) = auth {
-            match err {
-                $crate::api::container_spec::AuthFailure::Unauthorized(resp) => {
-                    return $err_type::Unauthorized(resp)
-                }
-                $crate::api::container_spec::AuthFailure::InternalServerError(err) => {
-                    error!("Unexpected auth failure {err:?}");
-                    return $err_type::Failure("An unexpected error occurred");
-                }
+    ($auth_result: expr, $err_type: ident) => {
+        match $auth_result {
+            Ok(a) => a,
+            Err($crate::api::container_spec::AuthFailure::Unauthorized(resp)) => {
+                return $err_type::Unauthorized(resp);
+            }
+            Err($crate::api::container_spec::AuthFailure::InternalServerError(err)) => {
+                error!("Unexpected auth failure {err:?}");
+                return $err_type::Failure("An unexpected error occurred");
             }
         }
     };

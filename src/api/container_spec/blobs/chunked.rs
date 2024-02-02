@@ -12,6 +12,7 @@ use crate::{
         errors::UnauthorizedResponse,
         Auth, AuthFailure,
     },
+    check_auth,
     config::Config,
     db::DB,
     services::upload_blob_service::{self, upload_blob},
@@ -47,15 +48,7 @@ pub async fn patch_upload_blob<'a>(
     session_id: &'a str,
     blob: OctetStream,
 ) -> UploadBlobResponse<'a> {
-    if let Err(err) = auth {
-        match err {
-            AuthFailure::Unauthorized(resp) => return UploadBlobResponse::Unauthorized(resp),
-            AuthFailure::InternalServerError(err) => {
-                error!("Unexpected auth failure {err:?}");
-                return UploadBlobResponse::Failure("An unexpected error occurred");
-            }
-        }
-    };
+    check_auth!(auth, UploadBlobResponse);
 
     let session_id = match Uuid::from_str(session_id) {
         Ok(id) => id,

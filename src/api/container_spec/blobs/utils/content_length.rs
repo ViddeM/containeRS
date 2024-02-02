@@ -4,7 +4,7 @@ use rocket::{
     Request,
 };
 
-use crate::api::container_spec::CONTENT_RANGE_HEADER_NAME;
+use crate::api::container_spec::CONTENT_LENGTH_HEADER_NAME;
 
 pub struct ContentLength {
     pub length: usize,
@@ -15,10 +15,10 @@ impl<'r> FromRequest<'r> for ContentLength {
     type Error = String;
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        let Some(content_length) = req.headers().get_one(CONTENT_RANGE_HEADER_NAME) else {
+        let Some(content_length) = req.headers().get_one(CONTENT_LENGTH_HEADER_NAME) else {
             return request::Outcome::Error((
                 Status::BadRequest,
-                format!("Missing {CONTENT_RANGE_HEADER_NAME} header"),
+                format!("Missing {CONTENT_LENGTH_HEADER_NAME} header"),
             ));
         };
 
@@ -28,7 +28,7 @@ impl<'r> FromRequest<'r> for ContentLength {
                 warn!("Received invalid content-length header {content_length} (err: {err:?})");
                 return request::Outcome::Error((
                     Status::BadRequest,
-                    format!("Invalid {CONTENT_RANGE_HEADER_NAME} header"),
+                    format!("Invalid {CONTENT_LENGTH_HEADER_NAME} header"),
                 ));
             }
         };

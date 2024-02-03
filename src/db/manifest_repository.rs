@@ -81,7 +81,7 @@ pub async fn find_by_repository_and_reference_optional(
         r#"
 SELECT m.id, m.repository, m.tag, m.blob_id, m.digest, m.content_type_top, m.content_type_sub, m.created_at
 FROM manifest m
-WHERE m.repository = $1 AND m.tag = $2
+WHERE m.repository = $1 AND m.digest = $2
         "#,
         repository,
         reference

@@ -1,19 +1,19 @@
-use std::str::FromStr;
-
 use rocket::{http::Header, State};
 use sqlx::Pool;
 use uuid::Uuid;
 
 use crate::{
     api::container_spec::{
-        blobs::utils::octet_stream::OctetStream, errors::UnauthorizedResponse, Auth, AuthFailure,
-        DOCKER_UPLOAD_UUID_HEADER_NAME, LOCATION_HEADER_NAME, RANGE_HEADER_NAME,
+        blobs::utils::octet_stream::OctetStream, Auth, DOCKER_UPLOAD_UUID_HEADER_NAME,
+        LOCATION_HEADER_NAME, RANGE_HEADER_NAME,
     },
-    check_auth,
     config::Config,
     db::DB,
     header, location,
+    models::upload_session::UploadSession,
+    registry_error::RegistryResult,
     services::upload_blob_service,
+    types::session_id::SessionId,
 };
 
 use super::utils::content_length::ContentLength;
@@ -36,8 +36,6 @@ pub struct UploadBlobResponseData<'a> {
 pub enum UploadBlobResponse<'a> {
     #[response(status = 202)]
     Success(UploadBlobResponseData<'a>),
-    #[response(status = 401)]
-    Unauthorized(UnauthorizedResponse),
     #[response(status = 500)]
     Failure(&'a str),
 }
@@ -46,42 +44,48 @@ pub enum UploadBlobResponse<'a> {
 pub async fn patch_upload_blob<'a>(
     config: &State<Config>,
     db_pool: &State<Pool<DB>>,
-    auth: Result<Auth, AuthFailure>,
+    _auth: Auth,
     name: &str,
     session_id: &'a str,
     blob: OctetStream,
 ) -> UploadBlobResponse<'a> {
-    check_auth!(auth, UploadBlobResponse);
-
-    let session_id = match Uuid::from_str(session_id) {
-        Ok(id) => id,
-        Err(e) => {
-            error!("Failed to parse session id ({session_id}), err: {e:?}");
-            return UploadBlobResponse::Failure("Invalid session ID");
-        }
-    };
-
-    let new_session = match upload_blob_service::upload_blob(
-        db_pool, name, session_id, config, blob.data,
-    )
-    .await
-    {
-        Ok(id) => id,
-        Err(e) => {
-            error!("Failed to upload blob, err: {e:?}");
+    let next_session = match upload_blob_part(db_pool, config, session_id, name, blob).await {
+        Ok(session) => session,
+        Err(err) => {
+            warn!("Failed to upload blob part due to err {err:?}");
             return UploadBlobResponse::Failure("Failed to upload blob");
         }
     };
 
     UploadBlobResponse::Success(UploadBlobResponseData {
         data: (),
-        location: location!(name, new_session.id),
+        location: location!(name, next_session.id),
         range: header!(
             RANGE_HEADER_NAME,
-            format!("0-{}", new_session.starting_byte_index)
+            format!("0-{}", next_session.starting_byte_index)
         ),
-        docker_upload_uuid: header!(DOCKER_UPLOAD_UUID_HEADER_NAME, new_session.id.to_string()),
+        docker_upload_uuid: header!(DOCKER_UPLOAD_UUID_HEADER_NAME, next_session.id.to_string()),
     })
+}
+
+async fn upload_blob_part(
+    db_pool: &Pool<DB>,
+    config: &Config,
+    session_id: &str,
+    name: &str,
+    blob: OctetStream,
+) -> RegistryResult<UploadSession> {
+    let session_id = SessionId::parse(session_id)?;
+
+    let new_session =
+        upload_blob_service::upload_blob(db_pool, name, session_id, config, blob.data, None)
+            .await
+            .map_err(|err| {
+                error!("Failed to upload blob, err: {err:?}");
+                err
+            })?;
+
+    Ok(new_session)
 }
 
 #[derive(Responder, Debug)]
@@ -98,13 +102,11 @@ pub enum FinishBlobUploadResponse<'a> {
     Failure(&'a str),
     #[response(status = 400)]
     InvalidSessionId(&'a str),
-    #[response(status = 401)]
-    Unauthorized(UnauthorizedResponse),
 }
 
 #[put("/v2/<name>/blobs/uploads/<session_id>?<digest>", data = "<blob>")]
 pub async fn put_upload_blob<'a>(
-    auth: Result<Auth, AuthFailure>,
+    _auth: Auth,
     name: &str,
     session_id: &'a str,
     digest: &'a str,
@@ -113,50 +115,21 @@ pub async fn put_upload_blob<'a>(
     config: &State<Config>,
     db_pool: &State<Pool<DB>>,
 ) -> FinishBlobUploadResponse<'a> {
-    check_auth!(auth, FinishBlobUploadResponse);
-
-    let session_id = match Uuid::from_str(session_id) {
-        Ok(id) => id,
-        Err(e) => {
-            error!("Failed to parse session id ({session_id}), err: {e:?}");
-            return FinishBlobUploadResponse::InvalidSessionId(session_id);
-        }
-    };
-
-    let final_session_id = if let Some(blob) = blob {
-        let blob = blob.data;
-
-        if blob.len() != content_length.length {
-            return FinishBlobUploadResponse::Failure(
-                "Content length doesn't match the provided blobs length",
-            );
-        }
-
-        match upload_blob_service::upload_blob(db_pool, name, session_id, config, blob).await {
-            Ok(s) => s,
-            Err(err) => {
-                error!("Failed to upload blob during finish upload, err: {err:?}");
-                return FinishBlobUploadResponse::Failure("Failed to upload blob");
-            }
-        }
-        .id
-    } else {
-        session_id
-    };
-
-    let blob_id = match upload_blob_service::finish_blob_upload(
+    let blob_id = match finalize_blob_upload(
         db_pool,
         config,
-        name.to_string(),
-        final_session_id,
-        digest.to_string(),
+        content_length,
+        session_id,
+        name,
+        blob,
+        digest,
     )
     .await
     {
-        Ok(blob_id) => blob_id,
-        Err(e) => {
-            error!("Failed to finish blob upload, err: {e:?}");
-            return FinishBlobUploadResponse::Failure("Failed to finish blob upload");
+        Ok(id) => id,
+        Err(err) => {
+            warn!("Failed to finalize blob upload due to error: {err:?}");
+            return FinishBlobUploadResponse::Failure("Failed to finalize blob upload");
         }
     };
 
@@ -164,4 +137,48 @@ pub async fn put_upload_blob<'a>(
         response: "Blob upload finished",
         location: Header::new(LOCATION_HEADER_NAME, blob_id.to_string()),
     })
+}
+
+async fn finalize_blob_upload(
+    db_pool: &Pool<DB>,
+    config: &Config,
+    content_length: ContentLength,
+    session_id: &str,
+    name: &str,
+    blob: Option<OctetStream>,
+    digest: &str,
+) -> RegistryResult<Uuid> {
+    let session_id = SessionId::parse(session_id)?;
+
+    let final_session_id = if let Some(blob) = blob {
+        let blob = blob.data;
+
+        content_length.validate_blob_length(blob.len())?;
+
+        upload_blob_service::upload_blob(db_pool, name, session_id, config, blob, None)
+            .await
+            .map_err(|err| {
+                error!("Failed to upload final blob section, err {err:?}");
+                err
+            })?
+            .id
+            .into()
+    } else {
+        session_id
+    };
+
+    let blob_id = upload_blob_service::finish_blob_upload(
+        db_pool,
+        config,
+        name.to_string(),
+        final_session_id,
+        digest.to_string(),
+    )
+    .await
+    .map_err(|err| {
+        error!("Failed to convert blob parts to finalized blob, err {err:?}");
+        err
+    })?;
+
+    Ok(blob_id)
 }

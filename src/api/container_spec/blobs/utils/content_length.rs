@@ -4,7 +4,10 @@ use rocket::{
     Request,
 };
 
-use crate::api::container_spec::CONTENT_LENGTH_HEADER_NAME;
+use crate::{
+    api::container_spec::CONTENT_LENGTH_HEADER_NAME,
+    registry_error::{RegistryError, RegistryResult},
+};
 
 pub struct ContentLength {
     pub length: usize,
@@ -15,6 +18,7 @@ impl<'r> FromRequest<'r> for ContentLength {
     type Error = String;
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        info!("ALL HEADERS {:?}", req.headers());
         let Some(content_length) = req.headers().get_one(CONTENT_LENGTH_HEADER_NAME) else {
             return request::Outcome::Error((
                 Status::BadRequest,
@@ -34,5 +38,18 @@ impl<'r> FromRequest<'r> for ContentLength {
         };
 
         request::Outcome::Success(ContentLength { length })
+    }
+}
+
+impl ContentLength {
+    pub fn validate_blob_length(&self, blob_length: usize) -> RegistryResult<()> {
+        if self.length != blob_length {
+            warn!(
+                "Got invalid content_length value ({}) when blob length was ({})",
+                self.length, blob_length
+            );
+            return Err(RegistryError::InvalidContentLength);
+        }
+        Ok(())
     }
 }

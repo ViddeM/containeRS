@@ -26,6 +26,10 @@ pub enum RegistryError {
     SerdeJsonError(#[from] serde_json::Error),
     #[error("Invalid content range")]
     InvalidContentRange,
+    #[error("Invalid session id")]
+    InvalidSessionId,
+    #[error("Invalid starting index")]
+    InvalidStartIndex,
 }
 
 pub type RegistryResult<T> = Result<T, RegistryError>;

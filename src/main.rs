@@ -2,8 +2,9 @@
 
 use std::str::FromStr;
 
+use api::container_spec::AuthFailure;
 use config::Config;
-use rocket::fs::FileServer;
+use rocket::{fs::FileServer, Request};
 use rocket_dyn_templates::Template;
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions},
@@ -58,6 +59,7 @@ async fn rocket() -> _ {
                 api::container_spec::blobs::create_session::post_create_session,
                 api::container_spec::blobs::streamed::patch_upload_blob,
                 api::container_spec::blobs::streamed::put_upload_blob,
+                api::container_spec::blobs::chunked::patch_upload_blob,
                 api::container_spec::manifests::put_manifest,
                 api::container_spec::manifests::get_manifest,
             ],
@@ -78,8 +80,19 @@ async fn rocket() -> _ {
                 api::frontend::image_view::get_image_view
             ],
         )
+        .register("/", catchers![unauthorized_catcher])
         .manage(db_pool)
         .manage(config)
         .manage(docker)
         .attach(Template::fairing())
+}
+
+#[catch(401)]
+fn unauthorized_catcher(req: &Request) -> AuthFailure {
+    let auth_failure_response: &AuthFailure = req.local_cache(|| {
+        error!("Got unauthorized without a failure having been set to local cache!");
+        AuthFailure::InternalServerError("Internal error".to_string())
+    });
+
+    auth_failure_response.clone()
 }

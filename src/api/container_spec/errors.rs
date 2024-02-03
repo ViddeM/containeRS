@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::Config;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum OCIError {
     BlobUnknown,
@@ -32,19 +32,19 @@ impl OCIError {
     }
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ContainerSpecErrorResponse {
     errors: Vec<ContainerSpecError>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ContainerSpecError {
     code: OCIError,
     message: String,
     detail: String,
 }
 
-#[derive(Responder, Debug)]
+#[derive(Responder, Debug, Clone)]
 #[response(status = 401, content_type = "json")]
 pub struct UnauthorizedResponse {
     inner: Json<ContainerSpecErrorResponse>,

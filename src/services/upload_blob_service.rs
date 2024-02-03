@@ -15,6 +15,7 @@ use crate::{
     },
     models::{repository::Repository, upload_session::UploadSession},
     registry_error::{RegistryError, RegistryResult},
+    types::session_id::SessionId,
 };
 
 const PG_UNIQUE_CONSTRAINT_ERROR_CODE: &str = "23505";
@@ -23,7 +24,7 @@ pub async fn create_session(
     db_pool: &Pool<DB>,
     username: &str,
     namespace: &str,
-) -> RegistryResult<Uuid> {
+) -> RegistryResult<SessionId> {
     let mut transaction = db::new_transaction(db_pool).await?;
 
     let owner =
@@ -51,7 +52,7 @@ pub async fn create_session(
 
     transaction.commit().await?;
 
-    Ok(session.id)
+    Ok(session.id.into())
 }
 
 async fn get_repository_if_exists(
@@ -74,21 +75,29 @@ async fn get_repository_if_exists(
 pub async fn upload_blob(
     db_pool: &Pool<DB>,
     namespace: &str,
-    session_id: Uuid,
+    session_id: SessionId,
     config: &Config,
     blob: Vec<u8>,
+    expected_start_byte: Option<usize>,
 ) -> RegistryResult<UploadSession> {
     let mut transaction = db::new_transaction(db_pool).await?;
 
     let Some(session) = upload_session_repository::find_by_repository_and_id(
         &mut transaction,
         namespace,
-        session_id,
+        session_id.clone().into(),
     )
     .await?
     else {
         return Err(RegistryError::SessionNotFound);
     };
+
+    if let Some(expected) = expected_start_byte {
+        if expected != session.starting_byte_index as usize {
+            warn!("Received invalid range start value {expected}");
+            return Err(RegistryError::InvalidStartIndex);
+        }
+    }
 
     let digest = sha256::digest(blob.as_slice());
 
@@ -108,7 +117,7 @@ pub async fn upload_blob(
 
     let new_session = upload_session_repository::insert(
         &mut transaction,
-        Some(session_id),
+        Some(session_id.into()),
         next_starting_byte_index,
         session.repository,
     )
@@ -125,24 +134,25 @@ pub async fn finish_blob_upload(
     db_pool: &Pool<DB>,
     config: &Config,
     namespace: String,
-    session_id: Uuid,
+    session_id: SessionId,
     digest: String,
 ) -> RegistryResult<Uuid> {
     let mut transaction = db::new_transaction(db_pool).await?;
 
     let mut digests = vec![];
 
-    let (previous_id, first_digest) = get_session(&mut transaction, &namespace, session_id).await?;
+    let (previous_id, first_digest) =
+        get_session(&mut transaction, &namespace, session_id.clone()).await?;
     if let Some(digest) = first_digest {
         digests.push(digest);
     }
 
     let mut curr_id = previous_id;
     while let Some(id) = curr_id {
-        let (previous_id, digest) = get_session(&mut transaction, &namespace, id).await?;
+        let (previous_id, digest) = get_session(&mut transaction, &namespace, id.clone()).await?;
 
         let Some(digest) = digest else {
-            error!("Upload session with ID {} has digest set to none!", id);
+            error!("Upload session with ID {:?} has digest set to none!", id);
             return Err(RegistryError::InvalidState);
         };
 
@@ -165,7 +175,7 @@ pub async fn finish_blob_upload(
         return Err(RegistryError::InvalidDigest);
     }
 
-    upload_session_repository::set_finished(&mut transaction, session_id, namespace.clone())
+    upload_session_repository::set_finished(&mut transaction, session_id.into(), namespace.clone())
         .await?;
 
     let prefixed_digest = format!("sha256:{}", calculated_digest);
@@ -218,17 +228,20 @@ fn get_file_data(config: &Config, digest: &str) -> RegistryResult<Vec<u8>> {
 async fn get_session(
     transaction: &mut Transaction<'_, DB>,
     namespace: &str,
-    session_id: Uuid,
-) -> RegistryResult<(Option<Uuid>, Option<String>)> {
-    let Some(session) =
-        upload_session_repository::find_by_repository_and_id(transaction, namespace, session_id)
-            .await?
+    session_id: SessionId,
+) -> RegistryResult<(Option<SessionId>, Option<String>)> {
+    let Some(session) = upload_session_repository::find_by_repository_and_id(
+        transaction,
+        namespace,
+        session_id.into(),
+    )
+    .await?
     else {
         error!("Previous session not found!");
         return Err(RegistryError::InvalidState);
     };
 
-    Ok((session.previous_session, session.digest))
+    Ok((session.previous_session.map(|s| s.into()), session.digest))
 }
 
 fn save_blob_file(config: &Config, digest: &str, data: &[u8]) -> RegistryResult<()> {

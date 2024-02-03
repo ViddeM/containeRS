@@ -28,7 +28,7 @@ pub struct Auth {
     username: String,
 }
 
-#[derive(Debug)]
+#[derive(Responder, Debug, Clone)]
 pub enum AuthFailure {
     Unauthorized(UnauthorizedResponse),
     InternalServerError(String),
@@ -51,18 +51,12 @@ impl<'r> FromRequest<'r> for Auth {
 
         let Some(auth_header) = req.headers().get_one("authorization") else {
             warn!("Request missing authorization header");
-            return request::Outcome::Error((
-                Status::Unauthorized,
-                AuthFailure::Unauthorized(UnauthorizedResponse::new(config)),
-            ));
+            return auth_failure(req, config);
         };
 
         if !auth_header.starts_with("Bearer ") {
             error!("Auth header doesn't start with 'Bearer '?");
-            return request::Outcome::Error((
-                Status::Unauthorized,
-                AuthFailure::Unauthorized(UnauthorizedResponse::new(config)),
-            ));
+            return auth_failure(req, config);
         }
 
         let client = reqwest::Client::new();
@@ -75,30 +69,21 @@ impl<'r> FromRequest<'r> for Auth {
             Ok(resp) => resp,
             Err(e) => {
                 error!("Failed to send user request to accounts service, err: {e:?}");
-                return request::Outcome::Error((
-                    Status::Unauthorized,
-                    AuthFailure::Unauthorized(UnauthorizedResponse::new(config)),
-                ));
+                return auth_failure(req, config);
             }
         };
 
         let resp_status = resp.status();
         if !resp_status.is_success() {
             error!("Got error response (status {resp_status}) from accounts service");
-            return request::Outcome::Error((
-                Status::Unauthorized,
-                AuthFailure::Unauthorized(UnauthorizedResponse::new(config)),
-            ));
+            return auth_failure(req, config);
         }
 
         let user_info: AccountsRsUserResponse = match resp.json().await {
             Ok(u) => u,
             Err(e) => {
                 error!("Failed to deserialize user request to accounts service, err: {e:?}");
-                return request::Outcome::Error((
-                    Status::Unauthorized,
-                    AuthFailure::Unauthorized(UnauthorizedResponse::new(config)),
-                ));
+                return auth_failure(req, config);
             }
         };
 
@@ -106,6 +91,12 @@ impl<'r> FromRequest<'r> for Auth {
             username: user_info.success.email,
         })
     }
+}
+
+fn auth_failure<'r>(request: &'r Request, config: &Config) -> request::Outcome<Auth, AuthFailure> {
+    let auth_failure = AuthFailure::Unauthorized(UnauthorizedResponse::new(config));
+    request.local_cache(|| auth_failure.clone());
+    return request::Outcome::Error((Status::Unauthorized, auth_failure));
 }
 
 #[derive(Responder)]

@@ -9,6 +9,9 @@ use crate::{
     registry_error::{RegistryError, RegistryResult},
 };
 
+use super::content_length::ContentLength;
+
+#[derive(Debug)]
 pub struct ContentRange {
     pub range_start: usize,
     pub range_end: usize,
@@ -75,11 +78,23 @@ impl<'r> FromRequest<'r> for ContentRange {
 }
 
 impl ContentRange {
-    pub fn expected_range(&self) -> RegistryResult<usize> {
-        if self.range_end < self.range_start {
+    pub fn validate(&self, content_length: &ContentLength) -> RegistryResult<()> {
+        let expected_size = self
+            .range_end
+            .checked_sub(self.range_start)
+            .ok_or_else(|| {
+                warn!("Range end was less than range start for content range {self:?}");
+                RegistryError::InvalidContentRange
+            })?;
+
+        if expected_size != content_length.length {
+            warn!(
+                "Content range expected size {expected_size} did not match content_length {}",
+                content_length.length
+            );
             return Err(RegistryError::InvalidContentRange);
         }
 
-        Ok(self.range_end - self.range_start)
+        Ok(())
     }
 }

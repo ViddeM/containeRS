@@ -86,3 +86,22 @@ WHERE id = $1 AND repository = $2
     .fetch_optional(&mut **transaction)
     .await?)
 }
+
+pub async fn try_find_by_previous_id(
+    transaction: &mut Transaction<'_, DB>,
+    repository: &str,
+    session_id: Uuid,
+) -> RegistryResult<Option<UploadSession>> {
+    Ok(sqlx::query_as!(
+        UploadSession,
+        r#"
+SELECT id, previous_session, starting_byte_index, digest, repository, created_at, is_finished
+FROM upload_session
+WHERE previous_session = $1 AND repository = $2
+    "#,
+        session_id,
+        repository
+    )
+    .fetch_optional(&mut **transaction)
+    .await?)
+}

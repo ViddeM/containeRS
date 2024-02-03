@@ -19,10 +19,8 @@ impl<'r> FromRequest<'r> for ContentLength {
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
         let Some(content_length) = req.headers().get_one(CONTENT_LENGTH_HEADER_NAME) else {
-            return request::Outcome::Error((
-                Status::BadRequest,
-                format!("Missing {CONTENT_LENGTH_HEADER_NAME} header"),
-            ));
+            warn!("Missing content-length header");
+            return request::Outcome::Forward(Status::BadRequest);
         };
 
         let length: usize = match content_length.parse() {

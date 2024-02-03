@@ -14,3 +14,13 @@ macro_rules! location {
         )
     };
 }
+
+#[macro_export]
+macro_rules! range {
+    ($session: expr) => {
+        header!(
+            $crate::api::container_spec::RANGE_HEADER_NAME,
+            format!("0-{}", $session.starting_byte_index - 1)
+        )
+    };
+}

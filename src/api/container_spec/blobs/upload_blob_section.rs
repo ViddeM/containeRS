@@ -2,6 +2,7 @@ use rocket::{http::Header, State};
 use sqlx::Pool;
 
 use crate::api::container_spec::{Auth, DOCKER_UPLOAD_UUID_HEADER_NAME};
+use crate::range;
 use crate::registry_error::RegistryError;
 use crate::{
     api::container_spec::RANGE_HEADER_NAME, config::Config, db::DB, header, location,
@@ -41,7 +42,7 @@ pub async fn patch_upload_blob<'a>(
     content_length: ContentLength,
     content_range: Option<ContentRange>,
     name: &str,
-    session_id: &'a str,
+    session_id: &str,
     blob: OctetStream,
 ) -> UploadBlobResponse<'a> {
     let next_session = match handle_chunked_upload(
@@ -73,10 +74,7 @@ pub async fn patch_upload_blob<'a>(
     UploadBlobResponse::Success(UploadBlobResponseData {
         data: (),
         location: location!(name, next_session.id),
-        range: header!(
-            RANGE_HEADER_NAME,
-            format!("0-{}", next_session.starting_byte_index - 1)
-        ),
+        range: range!(next_session),
         docker_upload_uuid: header!(DOCKER_UPLOAD_UUID_HEADER_NAME, next_session.id.to_string()),
     })
 }

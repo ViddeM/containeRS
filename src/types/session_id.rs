@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use uuid::Uuid;
 
@@ -28,5 +28,11 @@ impl From<SessionId> for Uuid {
 impl From<Uuid> for SessionId {
     fn from(value: Uuid) -> Self {
         Self(value)
+    }
+}
+
+impl Display for SessionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SessionId({})", self.0)
     }
 }

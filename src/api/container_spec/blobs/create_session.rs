@@ -3,10 +3,7 @@ use sqlx::Pool;
 use uuid::Uuid;
 
 use crate::{
-    api::container_spec::{
-        blobs::utils::content_length::ContentLength, Auth, DOCKER_UPLOAD_UUID_HEADER_NAME,
-        RANGE_HEADER_NAME,
-    },
+    api::container_spec::{Auth, DOCKER_UPLOAD_UUID_HEADER_NAME, RANGE_HEADER_NAME},
     db::DB,
     header, location,
     services::upload_blob_service,
@@ -32,19 +29,8 @@ pub enum CreateSessionResponse<'a> {
 pub async fn post_create_session<'a>(
     db_pool: &State<Pool<DB>>,
     auth: Auth,
-    content_length: Option<ContentLength>,
     name: &str,
 ) -> CreateSessionResponse<'a> {
-    if let Some(length) = content_length {
-        if length.length != 0 {
-            warn!(
-                "Content length of first request must be 0, got {}",
-                length.length
-            );
-            return CreateSessionResponse::Failure("Content length of first request must be 0");
-        }
-    }
-
     let initial_session_id: Uuid =
         match upload_blob_service::create_session(db_pool, &auth.username, name).await {
             Ok(id) => id.into(),

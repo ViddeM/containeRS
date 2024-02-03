@@ -26,10 +26,7 @@ impl<'r> FromRequest<'r> for ContentRange {
 
         let Some(content_range) = headers.get_one(CONTENT_RANGE_HEADER_NAME) else {
             warn!("Missing content-range header");
-            return request::Outcome::Error((
-                Status::BadRequest,
-                format!("Missing {CONTENT_RANGE_HEADER_NAME} header"),
-            ));
+            return request::Outcome::Forward(Status::BadRequest);
         };
 
         let Some((start, end)) = content_range.split_once("-") else {

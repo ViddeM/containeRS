@@ -19,17 +19,12 @@ impl<'r> FromData<'r> for OctetStream {
         data: Data<'r>,
     ) -> data::Outcome<'r, Self, Self::Error> {
         let Some(content_type) = req.headers().get_one(CONTENT_TYPE_HEADER_NAME) else {
-            return data::Outcome::Error((
-                Status::BadRequest,
-                format!("Missing {CONTENT_TYPE_HEADER_NAME} header"),
-            ));
+            return data::Outcome::Forward((data, Status::BadRequest));
         };
 
         if content_type != APPLICATION_TYPE_OCTET_STREAM {
-            return data::Outcome::Error((
-                Status::BadRequest,
-                format!("Invalid content-type for blob upload, expected {APPLICATION_TYPE_OCTET_STREAM}, got {content_type}")
-            ));
+            warn!("Non-octet stream content type, got {content_type} expected {APPLICATION_TYPE_OCTET_STREAM}");
+            return data::Outcome::Forward((data, Status::BadRequest));
         }
 
         let bytes = match Vec::<u8>::from_data(req, data).await {

@@ -85,7 +85,8 @@ impl ContentRange {
             .ok_or_else(|| {
                 warn!("Range end was less than range start for content range {self:?}");
                 RegistryError::InvalidContentRange
-            })?;
+            })?
+            + 1; // Plus 1 because the length should be inclusive
 
         if expected_size != content_length.length {
             warn!(

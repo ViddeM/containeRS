@@ -18,7 +18,6 @@ impl<'r> FromRequest<'r> for ContentLength {
     type Error = String;
 
     async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        info!("ALL HEADERS {:?}", req.headers());
         let Some(content_length) = req.headers().get_one(CONTENT_LENGTH_HEADER_NAME) else {
             return request::Outcome::Error((
                 Status::BadRequest,

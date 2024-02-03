@@ -23,11 +23,28 @@ pub enum OCIError {
 }
 
 impl OCIError {
-    pub fn unauthorized_response() -> ContainerSpecError {
+    pub fn to_response(self) -> ContainerSpecError {
+        let (message, detail) = match self {
+            OCIError::BlobUnknown => todo!(),
+            OCIError::BlobUploadInvalid => todo!(),
+            OCIError::BlobUploadUnknown => todo!(),
+            OCIError::DigestInvalid => todo!(),
+            OCIError::ManifestBlobUnknown => todo!(),
+            OCIError::ManifestInvalid => todo!(),
+            OCIError::ManifestUnverified => todo!(),
+            OCIError::NameInvalid => todo!(),
+            OCIError::NameUnknown => todo!(),
+            OCIError::SizeInvalid => todo!(),
+            OCIError::TagInvalid => todo!(),
+            OCIError::Unauthorized => ("access to the requested resource is not authorized", "Unable to authorize client, please follow indicated authorization steps before proceeding"),
+            OCIError::Denied => todo!(),
+            OCIError::Unsupported => todo!(),
+        };
+
         ContainerSpecError {
-            code: OCIError::Unauthorized,
-            message: "access to the requested resource is not authorized".to_string(),
-            detail: "Unable to authorize client, please follow indicated authorization steps before proceeding".to_string(),
+            code: self,
+            message: message.to_string(),
+            detail: detail.to_string(),
         }
     }
 }
@@ -55,11 +72,10 @@ impl UnauthorizedResponse {
     pub fn new(config: &Config) -> Self {
         Self {
             inner: Json(ContainerSpecErrorResponse {
-                errors: vec![OCIError::unauthorized_response()],
+                errors: vec![OCIError::Unauthorized.to_response()],
             }),
             www_authenticate: Header::new(
                 "www-authenticate",
-                // r#"Bearer realm="asd123", service="ser123", scope="""#,
                 format!(
                     r#"Bearer realm="{}", service="{}", scope=""#,
                     config.accounts_rs_auth_endpoint, config.auth_service

@@ -40,7 +40,7 @@ pub enum UploadBlobResponse<'a> {
     Failure(&'a str),
 }
 
-#[patch("/v2/<name>/blobs/uploads/<session_id>", data = "<blob>")]
+#[patch("/v2/<name>/blobs/uploads/<session_id>", data = "<blob>", rank = 2)]
 pub async fn patch_upload_blob<'a>(
     config: &State<Config>,
     db_pool: &State<Pool<DB>>,
@@ -62,7 +62,7 @@ pub async fn patch_upload_blob<'a>(
         location: location!(name, next_session.id),
         range: header!(
             RANGE_HEADER_NAME,
-            format!("0-{}", next_session.starting_byte_index)
+            format!("0-{}", next_session.starting_byte_index - 1)
         ),
         docker_upload_uuid: header!(DOCKER_UPLOAD_UUID_HEADER_NAME, next_session.id.to_string()),
     })

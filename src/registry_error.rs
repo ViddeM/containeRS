@@ -30,6 +30,8 @@ pub enum RegistryError {
     InvalidSessionId,
     #[error("Invalid starting index")]
     InvalidStartIndex,
+    #[error("The blob part has already been uploaded")]
+    BlobPartAlreadyUploaded,
 }
 
 pub type RegistryResult<T> = Result<T, RegistryError>;

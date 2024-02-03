@@ -92,9 +92,16 @@ pub async fn upload_blob(
         return Err(RegistryError::SessionNotFound);
     };
 
+    if session.digest.is_some() {
+        return Err(RegistryError::BlobPartAlreadyUploaded);
+    }
+
     if let Some(expected) = expected_start_byte {
         if expected != session.starting_byte_index as usize {
-            warn!("Received invalid range start value {expected}");
+            warn!(
+                "Received invalid range start value {expected}, expected {}",
+                session.starting_byte_index
+            );
             return Err(RegistryError::InvalidStartIndex);
         }
     }

@@ -14,6 +14,7 @@ pub mod auth_service;
 pub mod blobs;
 pub mod errors;
 pub mod manifests;
+pub mod tags;
 
 const CONTENT_TYPE_HEADER_NAME: &str = "Content-Type";
 const CONTENT_RANGE_HEADER_NAME: &str = "Content-Range";

@@ -7,12 +7,12 @@ use super::DB;
 
 pub async fn insert(
     transaction: &mut Transaction<'_, DB>,
-    repository: String,
+    repository: &str,
     blob_id: Uuid,
-    tag: String,
+    tag: &str,
     digest: &str,
-    content_type_top: String,
-    content_type_sub: String,
+    content_type_top: &str,
+    content_type_sub: &str,
 ) -> RegistryResult<Manifest> {
     Ok(sqlx::query_as!(
         Manifest,
@@ -34,8 +34,8 @@ RETURNING id, repository, tag, blob_id, digest, content_type_top, content_type_s
 
 pub async fn find_by_repository_and_tag(
     transaction: &mut Transaction<'_, DB>,
-    repository: String,
-    tag: String,
+    repository: &str,
+    tag: &str,
 ) -> RegistryResult<Option<Manifest>> {
     Ok(sqlx::query_as!(
         Manifest,
@@ -53,8 +53,8 @@ WHERE repository = $1 AND tag = $2
 
 pub async fn find_by_repository_and_digest(
     transaction: &mut Transaction<'_, DB>,
-    repository: String,
-    digest: String,
+    repository: &str,
+    digest: &str,
 ) -> RegistryResult<Manifest> {
     Ok(sqlx::query_as!(
         Manifest,
@@ -73,8 +73,8 @@ WHERE m.repository = $1 AND b.digest = $2
 
 pub async fn find_by_repository_and_reference_optional(
     transaction: &mut Transaction<'_, DB>,
-    repository: String,
-    reference: String,
+    repository: &str,
+    reference: &str,
 ) -> RegistryResult<Option<Manifest>> {
     Ok(sqlx::query_as!(
         Manifest,
@@ -92,7 +92,7 @@ WHERE m.repository = $1 AND m.digest = $2
 
 pub async fn find_all_by_repository(
     transaction: &mut Transaction<'_, DB>,
-    repository: String,
+    repository: &str,
 ) -> RegistryResult<Vec<Manifest>> {
     Ok(sqlx::query_as!(
         Manifest,

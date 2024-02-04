@@ -60,6 +60,7 @@ async fn rocket() -> _ {
                 api::container_spec::blobs::finalize_blob_upload::put_upload_blob,
                 api::container_spec::blobs::upload_blob_section::patch_upload_blob,
                 api::container_spec::blobs::read_session::get_upload_session,
+                api::container_spec::blobs::delete_blob::delete_blob,
                 api::container_spec::manifests::put_manifest,
                 api::container_spec::manifests::get_manifest,
             ],

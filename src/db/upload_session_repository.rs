@@ -9,7 +9,7 @@ pub async fn insert(
     transaction: &mut Transaction<'_, DB>,
     prev_session: Option<Uuid>,
     starting_byte_index: i32,
-    repository: String,
+    repository: &str,
 ) -> RegistryResult<UploadSession> {
     Ok(sqlx::query_as!(
         UploadSession,
@@ -29,7 +29,7 @@ RETURNING id, previous_session, starting_byte_index, digest, repository, created
 pub async fn set_digest(
     transaction: &mut Transaction<'_, DB>,
     id: Uuid,
-    digest: String,
+    digest: &str,
 ) -> RegistryResult<()> {
     sqlx::query_as!(
         UploadSession,
@@ -50,7 +50,7 @@ WHERE id = $2
 pub async fn set_finished(
     transaction: &mut Transaction<'_, DB>,
     session_id: Uuid,
-    repository: String,
+    repository: &str,
 ) -> RegistryResult<()> {
     sqlx::query_as!(
         UploadSession,

@@ -19,8 +19,8 @@ pub struct ManifestInfo {
 
 pub async fn find_manifest(
     db_pool: &Pool<DB>,
-    namespace: String,
-    reference: String,
+    namespace: &str,
+    reference: &str,
     config: &Config,
 ) -> RegistryResult<Option<ManifestInfo>> {
     let mut transaction = db::new_transaction(db_pool).await?;
@@ -29,18 +29,14 @@ pub async fn find_manifest(
         info!("Identified as a digest {reference}, retrieving manifest from that");
         manifest_repository::find_by_repository_and_reference_optional(
             &mut transaction,
-            namespace.clone(),
-            reference.to_string(),
+            namespace,
+            reference,
         )
         .await?
     } else {
         info!("Assumed to be tag {reference}, retrieving manifest from that");
-        manifest_repository::find_by_repository_and_tag(
-            &mut transaction,
-            namespace.clone(),
-            reference.clone(),
-        )
-        .await?
+        manifest_repository::find_by_repository_and_tag(&mut transaction, namespace, reference)
+            .await?
     };
 
     let manifest = if let Some(m) = manifest {

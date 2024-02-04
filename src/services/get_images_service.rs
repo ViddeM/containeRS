@@ -63,7 +63,7 @@ async fn map_image(
     repository: Repository,
 ) -> RegistryResult<Image> {
     let manifests =
-        manifest_repository::find_all_by_repository(transaction, repository.namespace_name.clone())
+        manifest_repository::find_all_by_repository(transaction, &repository.namespace_name)
             .await?;
 
     Ok(Image {

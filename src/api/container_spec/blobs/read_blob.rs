@@ -34,14 +34,7 @@ pub async fn get_blob<'a>(
     db_pool: &State<Pool<DB>>,
     config: &State<Config>,
 ) -> GetBlobResponse<'a> {
-    match get_blob_service::find_blob_by_digest(
-        db_pool,
-        config,
-        name.to_string(),
-        digest.to_string(),
-    )
-    .await
-    {
+    match get_blob_service::find_blob_by_digest(db_pool, config, name, digest).await {
         Ok(Some((blob, file))) => {
             info!("Blob exists {}", blob.digest);
             GetBlobResponse::Found(GetBlobResponseData {

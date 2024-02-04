@@ -5,9 +5,8 @@ use crate::api::container_spec::{Auth, DOCKER_UPLOAD_UUID_HEADER_NAME};
 use crate::range;
 use crate::registry_error::RegistryError;
 use crate::{
-    api::container_spec::RANGE_HEADER_NAME, config::Config, db::DB, header, location,
-    models::upload_session::UploadSession, registry_error::RegistryResult,
-    services::upload_blob_service, types::session_id::SessionId,
+    config::Config, db::DB, header, location, models::upload_session::UploadSession,
+    registry_error::RegistryResult, services::upload_blob_service, types::session_id::SessionId,
 };
 
 use super::utils::{
@@ -94,7 +93,7 @@ async fn handle_chunked_upload(
         content_range.validate(&content_length)?;
     }
 
-    content_length.validate_blob_length(blob.data.len())?;
+    content_length.validate_data_length(blob.data.len())?;
 
     let new_session = upload_blob_service::upload_blob(
         db_pool,

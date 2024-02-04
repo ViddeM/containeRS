@@ -32,6 +32,10 @@ pub enum RegistryError {
     InvalidStartIndex,
     #[error("The blob part has already been uploaded")]
     BlobPartAlreadyUploaded,
+    #[error("Blob not found")]
+    BlobNotFound,
+    #[error("Blob file not found")]
+    BlobFileNotFound,
 }
 
 pub type RegistryResult<T> = Result<T, RegistryError>;

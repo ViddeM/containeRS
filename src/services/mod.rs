@@ -1,3 +1,4 @@
+pub mod delete_blob_service;
 pub mod get_blob_service;
 pub mod get_images_service;
 pub mod get_manifest_service;

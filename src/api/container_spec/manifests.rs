@@ -1,19 +1,20 @@
 use rocket::{
     fs::NamedFile,
-    http::{ContentType, Header, Status},
-    request::{self, FromRequest},
-    Request, State,
+    http::{ContentType, Header},
+    State,
 };
 use sqlx::Pool;
+use uuid::Uuid;
 
 use crate::{
     config::Config,
     db::DB,
+    registry_error::RegistryResult,
     services::{self, get_manifest_service},
 };
 
 use super::{
-    Auth, CONTENT_LENGTH_HEADER_NAME, CONTENT_TYPE_HEADER_NAME, DOCKER_CONTENT_DIGEST_HEADER_NAME,
+    blobs::utils::content_length::ContentLength, Auth, DOCKER_CONTENT_DIGEST_HEADER_NAME,
     LOCATION_HEADER_NAME,
 };
 
@@ -41,14 +42,7 @@ pub async fn get_manifest<'a>(
     db_pool: &State<Pool<DB>>,
     config: &State<Config>,
 ) -> GetManifestResponse<'a> {
-    match get_manifest_service::find_manifest(
-        db_pool,
-        name.to_string(),
-        reference.to_string(),
-        config,
-    )
-    .await
-    {
+    match get_manifest_service::find_manifest(db_pool, name, reference, config).await {
         Ok(Some(manifest_info)) => {
             info!("Manifest found for {name}/{reference}");
             GetManifestResponse::Success(GetManifestResponseData {
@@ -91,78 +85,25 @@ pub enum PutManifestResponse<'a> {
     Failure(&'a str),
 }
 
-pub struct ManifestHeaders {
-    content_length: usize,
-    content_type: String,
-}
-
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for ManifestHeaders {
-    type Error = PutManifestResponse<'r>;
-
-    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        let content_length: usize = match req.headers().get_one(CONTENT_LENGTH_HEADER_NAME) {
-            Some(h) => match h.parse() {
-                Ok(val) => val,
-                Err(e) => {
-                    error!("Failed to parse content_length header, err: {e:?}");
-                    return request::Outcome::Error((
-                        Status::BadRequest,
-                        PutManifestResponse::BadRequest(format!(
-                            "Invalid header {CONTENT_LENGTH_HEADER_NAME}"
-                        )),
-                    ));
-                }
-            },
-            None => {
-                error!("Missing content_length header");
-                return request::Outcome::Error((
-                    Status::BadRequest,
-                    PutManifestResponse::BadRequest(format!(
-                        "Missing header {CONTENT_LENGTH_HEADER_NAME}"
-                    )),
-                ));
-            }
-        };
-
-        let content_type = match req.headers().get_one(CONTENT_TYPE_HEADER_NAME) {
-            Some(h) => h.to_string(),
-            None => {
-                error!("Missing content_type header");
-                return request::Outcome::Error((
-                    Status::BadRequest,
-                    PutManifestResponse::BadRequest(format!(
-                        "Missing header {CONTENT_TYPE_HEADER_NAME}"
-                    )),
-                ));
-            }
-        };
-
-        request::Outcome::Success(Self {
-            content_length,
-            content_type,
-        })
-    }
-}
-
-#[put("/v2/<name>/manifests/<reference>", data = "<manifest_data>")]
+#[put("/v2/<name>/manifests/<reference>", data = "<data>")]
 pub async fn put_manifest<'a>(
+    db_pool: &State<Pool<DB>>,
+    config: &State<Config>,
     _auth: Auth,
     name: &str,
     reference: &str,
-    headers: ManifestHeaders,
-    manifest_data: Vec<u8>,
-    config: &State<Config>,
-    db_pool: &State<Pool<DB>>,
+    content_length: ContentLength,
+    content_type: &ContentType,
+    data: Vec<u8>,
 ) -> PutManifestResponse<'a> {
-    match services::upload_manifest_service::upload_manifest(
-        name.to_string(),
-        reference.to_string(),
-        headers.content_length,
-        headers.content_type,
-        manifest_data,
-        config,
+    match upload_manifest(
         db_pool,
+        config,
+        name,
+        reference,
+        content_type,
+        content_length,
+        data,
     )
     .await
     {
@@ -176,4 +117,28 @@ pub async fn put_manifest<'a>(
             PutManifestResponse::Failure("Failed to upload manifest")
         }
     }
+}
+
+async fn upload_manifest(
+    db_pool: &Pool<DB>,
+    config: &Config,
+    name: &str,
+    reference: &str,
+    manifest_type: &ContentType,
+    content_length: ContentLength,
+    data: Vec<u8>,
+) -> RegistryResult<(Uuid, String)> {
+    content_length.validate_data_length(data.len())?;
+
+    let (id, digest) = services::upload_manifest_service::upload_manifest(
+        db_pool,
+        config,
+        name,
+        reference,
+        manifest_type,
+        data,
+    )
+    .await?;
+
+    Ok((id, digest))
 }

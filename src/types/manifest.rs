@@ -1,11 +1,12 @@
 use ::serde::Deserialize;
+use rocket::http::ContentType;
 use serde_json::value::RawValue;
 
 use crate::registry_error::{RegistryError, RegistryResult};
 
 pub const APPLICATION_CONTENT_TYPE_TOP: &str = "application";
-pub const DOCKER_IMAGE_MANIFEST_V2_CONTENT_TYPE_SUB: &str =
-    "vnd.docker.distribution.manifest.v2+json";
+
+const DOCKER_IMAGE_MANIFEST_V2_CONTENT_TYPE: &str = "vnd.docker.distribution.manifest.v2+json";
 
 const FAT_MANIFEST_CONTENT_TYPE_DOCKER: &str =
     "application/vnd.docker.distribution.manifest.list.v2+json";
@@ -54,28 +55,26 @@ impl<'a> FatManifest<'a> {
 #[serde(rename_all = "camelCase")]
 pub struct DockerImageManifestV2 {
     pub schema_version: i32,
-    pub media_type: String,
     pub config: ManifestConfig,
     pub layers: Vec<LayerManifest>,
+    pub media_type: String,
 }
 
 impl DockerImageManifestV2 {
-    pub fn parse(content_type: String, data: Vec<u8>) -> RegistryResult<Self> {
+    pub fn parse(content_type: &ContentType, data: Vec<u8>) -> RegistryResult<Self> {
         let slice = data.as_slice();
-        match content_type.as_str() {
-            DOCKER_IMAGE_MANIFEST_V2 => {
-                let image_manifest: Self = serde_json::from_slice(slice)?;
-                image_manifest.validate()?;
-                Ok(image_manifest)
-            }
-            _ => {
-                error!("Got unsupported manifest type {content_type}");
-                Err(RegistryError::UnsupportedManifestType)
-            }
+
+        if !SUPPORTED_IMAGE_MANIFEST_TYPES.contains(&content_type.to_string().as_str()) {
+            error!("Got unsupported manifest type {content_type}");
+            return Err(RegistryError::UnsupportedManifestType);
         }
+
+        let image_manifest: Self = serde_json::from_slice(slice)?;
+        image_manifest.validate(content_type)?;
+        Ok(image_manifest)
     }
 
-    pub fn validate(&self) -> RegistryResult<()> {
+    pub fn validate(&self, content_type: &ContentType) -> RegistryResult<()> {
         if self.schema_version != 2 {
             return Err(RegistryError::InvalidManifestSchema(format!(
                 "Expected manifest version 2, got {}",
@@ -83,12 +82,29 @@ impl DockerImageManifestV2 {
             )));
         }
 
-        if !SUPPORTED_IMAGE_MANIFEST_TYPES.contains(&self.media_type.as_str()) {
+        if self.media_type != content_type.to_string() {
+            error!(
+                "Manifest media type does not match the provided content type! ({}) != ({})",
+                self.media_type,
+                content_type.to_string()
+            );
             return Err(RegistryError::InvalidManifestSchema(format!(
-                "Unexpected image manifest type: {}",
-                self.media_type
+                "Manifest media type does not match content type"
             )));
         }
+
+        let Some(media_type) = self
+            .media_type
+            .strip_prefix(&format!("{APPLICATION_CONTENT_TYPE_TOP}/"))
+        else {
+            error!(
+                "Invalid media type for DockerImageManifestV2 '{}'",
+                self.media_type
+            );
+            return Err(RegistryError::InvalidManifestSchema(format!(
+                "Invalid media type for image manifest"
+            )));
+        };
 
         Ok(())
     }
@@ -104,7 +120,21 @@ pub struct ManifestConfig {
 
 impl ManifestConfig {
     pub fn validate(&self) -> RegistryResult<()> {
-        if !SUPPORTED_CONTAINER_CONFIG_TYPES.contains(&self.media_type.as_str()) {
+        let Some(media_type) = self
+            .media_type
+            .strip_prefix(&format!("{APPLICATION_CONTENT_TYPE_TOP}/"))
+        else {
+            error!(
+                "Unexpected manifest config media type '{}'",
+                self.media_type
+            );
+            return Err(RegistryError::InvalidManifestSchema(format!(
+                "Got unsupported config format {}",
+                self.media_type
+            )));
+        };
+
+        if !SUPPORTED_CONTAINER_CONFIG_TYPES.contains(&media_type) {
             error!(
                 "Expected manifest config type to have media type {}",
                 self.media_type
@@ -121,13 +151,12 @@ impl ManifestConfig {
     }
 }
 
-const LAYER_TAR_GZIP: &str = "application/vnd.docker.image.rootfs.diff.tar.gzip";
-const OCI_LAYER_TAR: &str = "application/vnd.oci.image.layer.v1.tar";
-const OCI_LAYER_TAR_GZIP: &str = "application/vnd.oci.image.layer.v1.tar+gzip";
-const OCI_LAYER_NONDISTRIBUTABLE_TAR: &str =
-    "application/vnd.oci.image.layer.nondistributable.v1.tar";
+const LAYER_TAR_GZIP: &str = "vnd.docker.image.rootfs.diff.tar.gzip";
+const OCI_LAYER_TAR: &str = "vnd.oci.image.layer.v1.tar";
+const OCI_LAYER_TAR_GZIP: &str = "vnd.oci.image.layer.v1.tar+gzip";
+const OCI_LAYER_NONDISTRIBUTABLE_TAR: &str = "vnd.oci.image.layer.nondistributable.v1.tar";
 const OCI_LAYER_NONDISTRIBUTABLE_TAR_GZIP: &str =
-    "application/vnd.oci.image.layer.nondistributable.v1.tar+gzip";
+    "vnd.oci.image.layer.nondistributable.v1.tar+gzip";
 
 const SUPPORTED_LAYER_TYPES: [&str; 5] = [
     LAYER_TAR_GZIP,
@@ -147,7 +176,17 @@ pub struct LayerManifest {
 
 impl LayerManifest {
     pub fn validate(&self) -> RegistryResult<()> {
-        if !SUPPORTED_LAYER_TYPES.contains(&self.media_type.as_str()) {
+        let Some(media_type) = self
+            .media_type
+            .strip_prefix(&format!("{APPLICATION_CONTENT_TYPE_TOP}/"))
+        else {
+            error!("Invalid layer manifest media type '{}'", self.media_type);
+            return Err(RegistryError::InvalidManifestSchema(format!(
+                "Invalid media type for schema, expected it to start with `application/`"
+            )));
+        };
+
+        if !SUPPORTED_LAYER_TYPES.contains(&media_type) {
             error!(
                 "Expected manifest config type to have media type {}",
                 self.media_type

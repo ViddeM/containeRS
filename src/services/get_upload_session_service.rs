@@ -45,5 +45,7 @@ pub async fn retrieve_last_upload_session(
         return Err(RegistryError::InvalidState);
     }
 
+    transaction.commit().await?;
+
     Ok(previous)
 }

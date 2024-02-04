@@ -1,3 +1,4 @@
+use rocket::http::ContentType;
 use sqlx::Pool;
 use std::{fs, io::Write, path::Path};
 use uuid::Uuid;
@@ -6,38 +7,26 @@ use crate::{
     config::Config,
     db::{self, blob_repository, manifest_layer_repository, manifest_repository, DB},
     registry_error::{RegistryError, RegistryResult},
-    types::manifest::{
-        DockerImageManifestV2, APPLICATION_CONTENT_TYPE_TOP,
-        DOCKER_IMAGE_MANIFEST_V2_CONTENT_TYPE_SUB,
-    },
+    types::manifest::{DockerImageManifestV2, APPLICATION_CONTENT_TYPE_TOP},
 };
 
 pub async fn upload_manifest(
-    namespace: String,
-    reference: String,
-    content_length: usize,
-    content_type: String,
-    data: Vec<u8>,
-    config: &Config,
     db_pool: &Pool<DB>,
+    config: &Config,
+    namespace: &str,
+    reference: &str,
+    manifest_type: &ContentType,
+    data: Vec<u8>,
 ) -> RegistryResult<(Uuid, String)> {
-    if content_length != data.len() {
-        error!(
-            "Invalid content length, got {content_length} but data is {}",
-            data.len()
-        );
-        return Err(RegistryError::InvalidContentLength);
-    }
-
     let calculated_digest = format!("sha256:{}", sha256::digest(data.as_slice()));
 
-    let image_manifest = DockerImageManifestV2::parse(content_type, data.clone())?;
+    let image_manifest = DockerImageManifestV2::parse(manifest_type, data.clone())?;
 
     let mut transaction = db::new_transaction(db_pool).await?;
 
     let image_blob = blob_repository::find_by_repository_and_digest(
         &mut transaction,
-        namespace.clone(),
+        namespace,
         &image_manifest.config.digest,
     )
     .await?
@@ -45,8 +34,8 @@ pub async fn upload_manifest(
 
     let manifest = match manifest_repository::find_by_repository_and_tag(
         &mut transaction,
-        namespace.clone(),
-        reference.clone(),
+        namespace,
+        reference,
     )
     .await?
     {
@@ -57,12 +46,12 @@ pub async fn upload_manifest(
         None => {
             manifest_repository::insert(
                 &mut transaction,
-                namespace.clone(),
+                namespace,
                 image_blob.id,
-                reference.clone(),
+                reference,
                 &calculated_digest,
-                APPLICATION_CONTENT_TYPE_TOP.to_string(),
-                DOCKER_IMAGE_MANIFEST_V2_CONTENT_TYPE_SUB.to_string(),
+                APPLICATION_CONTENT_TYPE_TOP,
+                &image_manifest.media_type,
             )
             .await?
         }
@@ -71,7 +60,7 @@ pub async fn upload_manifest(
     for layer in image_manifest.layers.iter() {
         let blob = blob_repository::find_by_repository_and_digest(
             &mut transaction,
-            namespace.clone(),
+            namespace,
             &layer.digest,
         )
         .await?
@@ -115,6 +104,12 @@ fn save_file(manifest_id: Uuid, config: &Config, data: Vec<u8>) -> RegistryResul
 
     let file_path_name = format!("{}.json", manifest_id.to_string());
     let file_path = Path::new(file_path_name.as_str());
+
+    if file_path.exists() {
+        info!("Manifest already exists at path {file_path:?}");
+        return Ok(());
+    }
+
     let mut file = fs::File::create(path.join(file_path))?;
     info!("File stored at {file_path:?}");
 

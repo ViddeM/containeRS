@@ -47,7 +47,7 @@ pub async fn create_session(
         };
 
     let session =
-        upload_session_repository::insert(&mut transaction, None, 0, repository.namespace_name)
+        upload_session_repository::insert(&mut transaction, None, 0, &repository.namespace_name)
             .await?;
 
     transaction.commit().await?;
@@ -108,7 +108,7 @@ pub async fn upload_blob(
 
     let digest = sha256::digest(blob.as_slice());
 
-    upload_session_repository::set_digest(&mut transaction, session.id, digest.clone()).await?;
+    upload_session_repository::set_digest(&mut transaction, session.id, &digest).await?;
 
     let Some(next_starting_byte_index) = session
         .starting_byte_index
@@ -126,7 +126,7 @@ pub async fn upload_blob(
         &mut transaction,
         Some(session_id.into()),
         next_starting_byte_index,
-        session.repository,
+        &session.repository,
     )
     .await?;
 
@@ -140,9 +140,9 @@ pub async fn upload_blob(
 pub async fn finish_blob_upload(
     db_pool: &Pool<DB>,
     config: &Config,
-    namespace: String,
+    namespace: &str,
     session_id: SessionId,
-    digest: String,
+    digest: &str,
 ) -> RegistryResult<Uuid> {
     let mut transaction = db::new_transaction(db_pool).await?;
 
@@ -182,8 +182,7 @@ pub async fn finish_blob_upload(
         return Err(RegistryError::InvalidDigest);
     }
 
-    upload_session_repository::set_finished(&mut transaction, session_id.into(), namespace.clone())
-        .await?;
+    upload_session_repository::set_finished(&mut transaction, session_id.into(), namespace).await?;
 
     let prefixed_digest = format!("sha256:{}", calculated_digest);
     let blob = blob_repository::insert(&mut transaction, namespace, &prefixed_digest).await?;
@@ -251,14 +250,37 @@ async fn get_session(
     Ok((session.previous_session.map(|s| s.into()), session.digest))
 }
 
-fn save_blob_file(config: &Config, digest: &str, data: &[u8]) -> RegistryResult<()> {
-    let dir = format!("{}/blobs/sha256", config.storage_directory);
-    let dir_path = Path::new(&dir);
-    fs::create_dir_all(dir_path)?;
+fn get_blob_path_dir(config: &Config) -> PathBuf {
+    Path::new(&config.storage_directory).join("blobs/sha256")
+}
 
+fn to_file_path(dir_path: PathBuf, digest: &str) -> PathBuf {
     let mut file_path = dir_path.join(digest);
     file_path.set_extension("tar.gz");
+    file_path
+}
 
+pub fn get_blob_file_path(config: &Config, digest: &str) -> PathBuf {
+    let dir = get_blob_path_dir(config);
+    to_file_path(dir, digest)
+}
+
+fn save_blob_file(config: &Config, digest: &str, data: &[u8]) -> RegistryResult<()> {
+    let dir_path = get_blob_path_dir(config);
+
+    if !dir_path.exists() {
+        info!("Blob dir path doesn't exist, creating at {dir_path:?}");
+        fs::create_dir_all(dir_path.as_path())?;
+    }
+
+    let file_path = to_file_path(dir_path, digest);
+
+    if file_path.exists() {
+        info!("Blob already exists at path {file_path:?}");
+        return Ok(());
+    }
+
+    info!("Saving blob to file {file_path:?}");
     let mut file = File::create_new(file_path)?;
     file.write_all(data)?;
 

@@ -79,7 +79,7 @@ async fn finalize_blob_upload(
     let final_session_id = if let Some(blob) = blob {
         let blob = blob.data;
 
-        content_length.validate_blob_length(blob.len())?;
+        content_length.validate_data_length(blob.len())?;
 
         upload_blob_service::upload_blob(db_pool, name, session_id, config, blob, None)
             .await
@@ -93,18 +93,13 @@ async fn finalize_blob_upload(
         session_id
     };
 
-    let blob_id = upload_blob_service::finish_blob_upload(
-        db_pool,
-        config,
-        name.to_string(),
-        final_session_id,
-        digest.to_string(),
-    )
-    .await
-    .map_err(|err| {
-        error!("Failed to convert blob parts to finalized blob, err {err:?}");
-        err
-    })?;
+    let blob_id =
+        upload_blob_service::finish_blob_upload(db_pool, config, name, final_session_id, digest)
+            .await
+            .map_err(|err| {
+                error!("Failed to convert blob parts to finalized blob, err {err:?}");
+                err
+            })?;
 
     Ok(blob_id)
 }

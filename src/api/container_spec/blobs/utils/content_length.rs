@@ -39,7 +39,7 @@ impl<'r> FromRequest<'r> for ContentLength {
 }
 
 impl ContentLength {
-    pub fn validate_blob_length(&self, blob_length: usize) -> RegistryResult<()> {
+    pub fn validate_data_length(&self, blob_length: usize) -> RegistryResult<()> {
         if self.length != blob_length {
             warn!(
                 "Got invalid content_length value ({}) when blob length was ({})",

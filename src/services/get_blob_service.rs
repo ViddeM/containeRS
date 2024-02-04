@@ -13,13 +13,13 @@ use crate::{
 pub async fn find_blob_by_digest(
     db_pool: &Pool<DB>,
     config: &Config,
-    namespace: String,
-    digest: String,
+    namespace: &str,
+    digest: &str,
 ) -> RegistryResult<Option<(Blob, NamedFile)>> {
     let mut transaction = db::new_transaction(db_pool).await?;
 
-    let blob = blob_repository::find_by_repository_and_digest(&mut transaction, namespace, &digest)
-        .await?;
+    let blob =
+        blob_repository::find_by_repository_and_digest(&mut transaction, namespace, digest).await?;
 
     transaction.commit().await?;
 

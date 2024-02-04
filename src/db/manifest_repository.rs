@@ -51,30 +51,10 @@ WHERE repository = $1 AND tag = $2
     .await?)
 }
 
-pub async fn find_by_repository_and_digest(
+pub async fn find_first_by_repository_and_digest(
     transaction: &mut Transaction<'_, DB>,
     repository: &str,
     digest: &str,
-) -> RegistryResult<Manifest> {
-    Ok(sqlx::query_as!(
-        Manifest,
-        r#"
-SELECT m.id, m.repository, m.tag, m.blob_id, m.digest, m.content_type_top, m.content_type_sub, m.created_at
-FROM manifest m
-INNER JOIN blob b ON m.blob_id = b.id
-WHERE m.repository = $1 AND b.digest = $2
-        "#,
-        repository,
-        digest
-    )
-    .fetch_one(&mut **transaction)
-    .await?)
-}
-
-pub async fn find_by_repository_and_reference_optional(
-    transaction: &mut Transaction<'_, DB>,
-    repository: &str,
-    reference: &str,
 ) -> RegistryResult<Option<Manifest>> {
     Ok(sqlx::query_as!(
         Manifest,
@@ -84,9 +64,28 @@ FROM manifest m
 WHERE m.repository = $1 AND m.digest = $2
         "#,
         repository,
-        reference
+        digest
     )
     .fetch_optional(&mut **transaction)
+    .await?)
+}
+
+pub async fn find_by_repository_and_digest(
+    transaction: &mut Transaction<'_, DB>,
+    repository: &str,
+    digest: &str,
+) -> RegistryResult<Vec<Manifest>> {
+    Ok(sqlx::query_as!(
+        Manifest,
+        r#"
+SELECT m.id, m.repository, m.tag, m.blob_id, m.digest, m.content_type_top, m.content_type_sub, m.created_at
+FROM manifest m
+WHERE m.repository = $1 AND m.digest = $2
+        "#,
+        repository,
+        digest
+    )
+    .fetch_all(&mut **transaction)
     .await?)
 }
 
@@ -105,4 +104,42 @@ WHERE repository = $1
     )
     .fetch_all(&mut **transaction)
     .await?)
+}
+
+pub async fn find_all_by_blob_id_and_repository(
+    transaction: &mut Transaction<'_, DB>,
+    repository: &str,
+    blob_id: Uuid,
+) -> RegistryResult<Vec<Manifest>> {
+    Ok(sqlx::query_as!(
+        Manifest,
+        r#"
+SELECT id, repository, tag, blob_id, digest, content_type_top, content_type_sub, created_at
+FROM manifest
+WHERE blob_id = $1 AND repository = $2
+        "#,
+        blob_id,
+        repository
+    )
+    .fetch_all(&mut **transaction)
+    .await?)
+}
+
+pub async fn delete_manifest(
+    transaction: &mut Transaction<'_, DB>,
+    id: Uuid,
+) -> RegistryResult<()> {
+    sqlx::query_as!(
+        Manifest,
+        r#"
+DELETE
+FROM manifest
+WHERE id = $1
+    "#,
+        id
+    )
+    .execute(&mut **transaction)
+    .await?;
+
+    Ok(())
 }

@@ -1,6 +1,10 @@
 use rocket::http::ContentType;
 use sqlx::Pool;
-use std::{fs, io::Write, path::Path};
+use std::{
+    fs,
+    io::Write,
+    path::{Path, PathBuf},
+};
 use uuid::Uuid;
 
 use crate::{
@@ -44,6 +48,13 @@ pub async fn upload_manifest(
             m
         }
         None => {
+            let content_type = manifest_type.to_string();
+            let Some(content_type_sub) = content_type.strip_prefix("application/") else {
+                error!("Media type does not start with `application/`! (Got {manifest_type})");
+                return Err(RegistryError::InvalidManifestSchema(
+                    "Expected application/".to_string(),
+                ));
+            };
             manifest_repository::insert(
                 &mut transaction,
                 namespace,
@@ -51,7 +62,7 @@ pub async fn upload_manifest(
                 reference,
                 &calculated_digest,
                 APPLICATION_CONTENT_TYPE_TOP,
-                &image_manifest.media_type,
+                content_type_sub,
             )
             .await?
         }
@@ -96,22 +107,36 @@ pub async fn upload_manifest(
     Ok((manifest.id, calculated_digest))
 }
 
-fn save_file(manifest_id: Uuid, config: &Config, data: Vec<u8>) -> RegistryResult<()> {
-    let path_name = format!("{}/manifests", config.storage_directory);
-    let path = Path::new(path_name.as_str());
-    fs::create_dir_all(path)?;
-    info!("Creating directories {path:?}");
+fn get_manifests_dir(config: &Config) -> PathBuf {
+    Path::new(&config.storage_directory).join("manifests")
+}
 
-    let file_path_name = format!("{}.json", manifest_id.to_string());
-    let file_path = Path::new(file_path_name.as_str());
+fn to_file_path(dir_path: PathBuf, manifest_id: Uuid) -> PathBuf {
+    let mut file_path = dir_path.join(manifest_id.to_string());
+    file_path.set_extension("json");
+    file_path
+}
+
+pub fn get_manifest_file_path(config: &Config, manifest_id: Uuid) -> PathBuf {
+    let dir = get_manifests_dir(config);
+    to_file_path(dir, manifest_id)
+}
+
+fn save_file(manifest_id: Uuid, config: &Config, data: Vec<u8>) -> RegistryResult<()> {
+    let manifests_dir = get_manifests_dir(config);
+
+    info!("Creating directories {manifests_dir:?}");
+    fs::create_dir_all(manifests_dir.clone())?;
+
+    let file_path = to_file_path(manifests_dir, manifest_id);
 
     if file_path.exists() {
         info!("Manifest already exists at path {file_path:?}");
         return Ok(());
     }
 
-    let mut file = fs::File::create(path.join(file_path))?;
-    info!("File stored at {file_path:?}");
+    info!("Creating file manifest file {file_path:?}");
+    let mut file = fs::File::create(file_path)?;
 
     file.write_all(&data)?;
 

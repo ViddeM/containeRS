@@ -9,8 +9,8 @@ use uuid::Uuid;
 use crate::{
     config::Config,
     db::DB,
-    registry_error::RegistryResult,
-    services::{self, get_manifest_service},
+    registry_error::{RegistryError, RegistryResult},
+    services::{self, delete_manifest_service, get_manifest_service},
 };
 
 use super::{
@@ -141,4 +141,38 @@ async fn upload_manifest(
     .await?;
 
     Ok((id, digest))
+}
+
+#[derive(Responder)]
+pub enum DeleteManifestResponse {
+    #[response(status = 202)]
+    Success(()),
+    #[response(status = 404)]
+    NotFound(()),
+    #[response(status = 500)]
+    Failure(()),
+}
+
+#[delete("/v2/<name>/manifests/<digest>")]
+pub async fn delete_manifest(
+    db_pool: &State<Pool<DB>>,
+    config: &State<Config>,
+    _auth: Auth,
+    name: &str,
+    digest: &str,
+) -> DeleteManifestResponse {
+    if let Err(err) = delete_manifest_service::delete_manifest(db_pool, config, name, digest).await
+    {
+        match err {
+            RegistryError::ManifestNotFound => {
+                return DeleteManifestResponse::NotFound(());
+            }
+            err => {
+                error!("Failed to delete manifest, err: {err:?}");
+                return DeleteManifestResponse::Failure(());
+            }
+        }
+    }
+
+    DeleteManifestResponse::Success(())
 }

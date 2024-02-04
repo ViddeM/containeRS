@@ -36,6 +36,12 @@ pub enum RegistryError {
     BlobNotFound,
     #[error("Blob file not found")]
     BlobFileNotFound,
+    #[error("Manifest not found")]
+    ManifestNotFound,
+    #[error("Manifest file not found")]
+    ManifestFileNotFound,
+    #[error("Manifest still references blob")]
+    BlobManifestStillExists,
 }
 
 pub type RegistryResult<T> = Result<T, RegistryError>;

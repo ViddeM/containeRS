@@ -4,7 +4,7 @@ use sqlx::Pool;
 
 use crate::{
     config::Config,
-    db::{self, blob_repository, DB},
+    db::{self, blob_repository, manifest_repository, DB},
     registry_error::{RegistryError, RegistryResult},
 };
 
@@ -24,6 +24,14 @@ pub async fn delete_blob(
         return Err(RegistryError::BlobNotFound);
     };
 
+    let manifests =
+        manifest_repository::find_all_by_blob_id_and_repository(&mut transaction, name, blob.id)
+            .await?;
+    if !manifests.is_empty() {
+        error!("There are still manifests that refer to this blob that must be deleted first");
+        return Err(RegistryError::BlobManifestStillExists);
+    }
+
     blob_repository::delete_blob(&mut transaction, blob.id).await?;
 
     let remaining_references =
@@ -40,6 +48,11 @@ pub async fn delete_blob(
 }
 
 fn delete_blob_file(config: &Config, digest: &str) -> RegistryResult<()> {
+    let Some(digest) = digest.strip_prefix("sha256:") else {
+        error!("Digest did not start with `sha256:`? {digest}");
+        return Err(RegistryError::InvalidDigest);
+    };
+
     let file_path = get_blob_file_path(config, digest);
     if !file_path.exists() {
         error!("blob file with digest {digest} did not exist at path {file_path:?}");

@@ -27,7 +27,7 @@ pub async fn find_manifest(
 
     let manifest = if reference.starts_with("sha256:") {
         info!("Identified as a digest {reference}, retrieving manifest from that");
-        manifest_repository::find_by_repository_and_reference_optional(
+        manifest_repository::find_first_by_repository_and_digest(
             &mut transaction,
             namespace,
             reference,

@@ -57,7 +57,7 @@ pub struct DockerImageManifestV2 {
     pub schema_version: i32,
     pub config: ManifestConfig,
     pub layers: Vec<LayerManifest>,
-    pub media_type: String,
+    pub media_type: Option<String>,
 }
 
 impl DockerImageManifestV2 {
@@ -82,29 +82,25 @@ impl DockerImageManifestV2 {
             )));
         }
 
-        if self.media_type != content_type.to_string() {
-            error!(
-                "Manifest media type does not match the provided content type! ({}) != ({})",
-                self.media_type,
-                content_type.to_string()
-            );
-            return Err(RegistryError::InvalidManifestSchema(format!(
-                "Manifest media type does not match content type"
-            )));
-        }
+        if let Some(ct) = self.media_type.as_ref() {
+            if ct != &content_type.to_string() {
+                error!(
+                    "Manifest media type ({ct}) does not match the provided content type ({})!",
+                    content_type.to_string()
+                );
+                return Err(RegistryError::InvalidManifestSchema(format!(
+                    "Manifest media type does not match content type"
+                )));
+            }
 
-        let Some(media_type) = self
-            .media_type
-            .strip_prefix(&format!("{APPLICATION_CONTENT_TYPE_TOP}/"))
-        else {
-            error!(
-                "Invalid media type for DockerImageManifestV2 '{}'",
-                self.media_type
-            );
-            return Err(RegistryError::InvalidManifestSchema(format!(
-                "Invalid media type for image manifest"
-            )));
-        };
+            let Some(media_type) = ct.strip_prefix(&format!("{APPLICATION_CONTENT_TYPE_TOP}/"))
+            else {
+                error!("Invalid media type for DockerImageManifestV2 '{ct}'",);
+                return Err(RegistryError::InvalidManifestSchema(format!(
+                    "Invalid media type for image manifest"
+                )));
+            };
+        }
 
         Ok(())
     }

@@ -46,3 +46,22 @@ WHERE manifest_id = $1 AND blob_id = $2
     .fetch_optional(&mut **transaction)
     .await?)
 }
+
+pub async fn delete_all_for_manifest(
+    transaction: &mut Transaction<'_, DB>,
+    manifest_id: Uuid,
+) -> RegistryResult<()> {
+    sqlx::query_as!(
+        ManifestLayer,
+        r#"
+DELETE
+FROM manifest_layer
+WHERE manifest_id = $1   
+        "#,
+        manifest_id
+    )
+    .execute(&mut **transaction)
+    .await?;
+
+    Ok(())
+}

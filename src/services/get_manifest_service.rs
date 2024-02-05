@@ -35,8 +35,12 @@ pub async fn find_manifest(
         .await?
     } else {
         info!("Assumed to be tag {reference}, retrieving manifest from that");
-        manifest_repository::find_by_repository_and_tag(&mut transaction, namespace, reference)
-            .await?
+        manifest_repository::find_by_repository_and_tag(
+            &mut transaction,
+            namespace,
+            Some(reference),
+        )
+        .await?
     };
 
     let manifest = if let Some(m) = manifest {

@@ -5,7 +5,7 @@ use uuid::Uuid;
 pub struct Manifest {
     pub id: Uuid,
     pub repository: String,
-    pub tag: String,
+    pub tag: Option<String>,
     pub blob_id: Uuid,
     pub digest: String,
     pub content_type_top: String,

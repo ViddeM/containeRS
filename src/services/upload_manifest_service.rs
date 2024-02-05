@@ -1,5 +1,5 @@
 use rocket::http::ContentType;
-use sqlx::Pool;
+use sqlx::{Pool, Transaction};
 use std::{
     fs,
     io::Write,
@@ -10,6 +10,7 @@ use uuid::Uuid;
 use crate::{
     config::Config,
     db::{self, blob_repository, manifest_layer_repository, manifest_repository, DB},
+    models::manifest::Manifest,
     registry_error::{RegistryError, RegistryResult},
     types::manifest::{DockerImageManifestV2, APPLICATION_CONTENT_TYPE_TOP},
 };
@@ -36,36 +37,27 @@ pub async fn upload_manifest(
     .await?
     .ok_or(RegistryError::InvalidDigest)?;
 
-    let manifest = match manifest_repository::find_by_repository_and_tag(
-        &mut transaction,
-        namespace,
-        reference,
-    )
-    .await?
-    {
-        Some(m) => {
-            warn!("Manifest already exists, overwriting");
-            m
-        }
-        None => {
-            let content_type = manifest_type.to_string();
-            let Some(content_type_sub) = content_type.strip_prefix("application/") else {
-                error!("Media type does not start with `application/`! (Got {manifest_type})");
-                return Err(RegistryError::InvalidManifestSchema(
-                    "Expected application/".to_string(),
-                ));
-            };
-            manifest_repository::insert(
-                &mut transaction,
-                namespace,
-                image_blob.id,
-                reference,
-                &calculated_digest,
-                APPLICATION_CONTENT_TYPE_TOP,
-                content_type_sub,
-            )
-            .await?
-        }
+    let manifest = if reference.starts_with("sha256:") {
+        info!("Reference assumed to be digest: {reference}");
+        save_manifest_by_digest(
+            &mut transaction,
+            namespace,
+            manifest_type,
+            image_blob.id,
+            &calculated_digest,
+        )
+        .await?
+    } else {
+        info!("Reference assumed to be tag: {reference}");
+        save_manifest_by_tag(
+            &mut transaction,
+            namespace,
+            reference,
+            manifest_type,
+            image_blob.id,
+            &calculated_digest,
+        )
+        .await?
     };
 
     for layer in image_manifest.layers.iter() {
@@ -105,6 +97,88 @@ pub async fn upload_manifest(
     transaction.commit().await?;
 
     Ok((manifest.id, calculated_digest))
+}
+
+async fn save_manifest_by_tag(
+    transaction: &mut Transaction<'_, DB>,
+    namespace: &str,
+    tag: &str,
+    manifest_type: &ContentType,
+    image_blob_id: Uuid,
+    calculated_digest: &str,
+) -> RegistryResult<Manifest> {
+    let manifest =
+        match manifest_repository::find_by_repository_and_tag(transaction, namespace, Some(tag))
+            .await?
+        {
+            Some(m) => {
+                warn!("Manifest already exists, overwriting");
+                m
+            }
+            None => {
+                let content_type = manifest_type.to_string();
+                let Some(content_type_sub) = content_type.strip_prefix("application/") else {
+                    error!("Media type does not start with `application/`! (Got {manifest_type})");
+                    return Err(RegistryError::InvalidManifestSchema(
+                        "Expected application/".to_string(),
+                    ));
+                };
+                manifest_repository::insert(
+                    transaction,
+                    namespace,
+                    image_blob_id,
+                    Some(tag),
+                    &calculated_digest,
+                    APPLICATION_CONTENT_TYPE_TOP,
+                    content_type_sub,
+                )
+                .await?
+            }
+        };
+
+    Ok(manifest)
+}
+
+async fn save_manifest_by_digest(
+    transaction: &mut Transaction<'_, DB>,
+    namespace: &str,
+    manifest_type: &ContentType,
+    image_blob_id: Uuid,
+    calculated_digest: &str,
+) -> RegistryResult<Manifest> {
+    let manifest = match manifest_repository::find_first_by_repository_and_digest(
+        transaction,
+        namespace,
+        calculated_digest,
+    )
+    .await?
+    {
+        Some(m) => {
+            warn!("Manifest already exists, overwriting");
+            m
+        }
+        None => {
+            let content_type = manifest_type.to_string();
+            let Some(content_type_sub) = content_type.strip_prefix("application/") else {
+                error!("Media type does not start with `application/`! (Got {manifest_type})");
+                return Err(RegistryError::InvalidManifestSchema(
+                    "Expected application/".to_string(),
+                ));
+            };
+            manifest_repository::insert(
+                transaction,
+                namespace,
+                image_blob_id,
+                None,
+                &calculated_digest,
+                APPLICATION_CONTENT_TYPE_TOP,
+                content_type_sub,
+            )
+            .await?
+        }
+    };
+
+    Ok(manifest)
 }
 
 fn get_manifests_dir(config: &Config) -> PathBuf {

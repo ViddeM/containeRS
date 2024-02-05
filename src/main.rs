@@ -64,6 +64,7 @@ async fn rocket() -> _ {
                 api::container_spec::manifests::delete_manifest,
                 api::container_spec::manifests::put_manifest,
                 api::container_spec::manifests::get_manifest,
+                api::container_spec::tags::get_tags,
             ],
         )
         .mount(

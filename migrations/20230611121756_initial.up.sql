@@ -45,7 +45,7 @@ CREATE TABLE manifest (
      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
      repository TEXT NOT NULL REFERENCES repository(namespace_name),
-     tag TEXT NOT NULL,
+     tag TEXT,
      blob_id UUID NOT NULL REFERENCES blob(id),
      digest TEXT NOT NULL,
      content_type_top TEXT NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE manifest (
 
      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-     UNIQUE (repository, tag)
+     UNIQUE NULLS NOT DISTINCT (repository, tag)
 );
 
 CREATE TABLE manifest_layer (

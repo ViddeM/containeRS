@@ -17,7 +17,7 @@ struct DisplayTag {
 impl From<Tag> for DisplayTag {
     fn from(value: Tag) -> Self {
         Self {
-            name: value.tag,
+            name: value.reference,
             update_date: value.created_at.format("%Y-%m-%d %H:%M").to_string(),
         }
     }

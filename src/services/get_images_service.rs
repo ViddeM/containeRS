@@ -18,14 +18,14 @@ pub struct Image {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Tag {
-    pub tag: String,
+    pub reference: String,
     pub created_at: DateTime<Utc>,
 }
 
 impl From<Manifest> for Tag {
     fn from(value: Manifest) -> Self {
         Self {
-            tag: value.tag,
+            reference: value.tag.unwrap_or(value.digest),
             created_at: value.created_at,
         }
     }
@@ -70,10 +70,7 @@ async fn map_image(
         name: repository.namespace_name,
         tags: manifests
             .into_iter()
-            .map(|manifest| Tag {
-                tag: manifest.tag,
-                created_at: manifest.created_at,
-            })
+            .map(|manifest| manifest.into())
             .collect(),
     })
 }

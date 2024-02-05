@@ -9,7 +9,7 @@ pub async fn insert(
     transaction: &mut Transaction<'_, DB>,
     repository: &str,
     blob_id: Uuid,
-    tag: &str,
+    tag: Option<&str>,
     digest: &str,
     content_type_top: &str,
     content_type_sub: &str,
@@ -35,7 +35,7 @@ RETURNING id, repository, tag, blob_id, digest, content_type_top, content_type_s
 pub async fn find_by_repository_and_tag(
     transaction: &mut Transaction<'_, DB>,
     repository: &str,
-    tag: &str,
+    tag: Option<&str>,
 ) -> RegistryResult<Option<Manifest>> {
     Ok(sqlx::query_as!(
         Manifest,
@@ -99,8 +99,73 @@ pub async fn find_all_by_repository(
 SELECT id, repository, tag, blob_id, digest, content_type_top, content_type_sub, created_at
 FROM manifest
 WHERE repository = $1
+ORDER BY tag ASC
         "#,
         repository
+    )
+    .fetch_all(&mut **transaction)
+    .await?)
+}
+
+pub async fn find_all_by_repository_max(
+    transaction: &mut Transaction<'_, DB>,
+    repository: &str,
+    n: i64,
+) -> RegistryResult<Vec<Manifest>> {
+    Ok(sqlx::query_as!(
+        Manifest,
+        r#"
+SELECT id, repository, tag, blob_id, digest, content_type_top, content_type_sub, created_at
+FROM manifest
+WHERE repository = $1
+ORDER BY tag ASC
+LIMIT $2
+        "#,
+        repository,
+        n
+    )
+    .fetch_all(&mut **transaction)
+    .await?)
+}
+
+pub async fn find_all_by_repository_last(
+    transaction: &mut Transaction<'_, DB>,
+    repository: &str,
+    last: &str,
+) -> RegistryResult<Vec<Manifest>> {
+    Ok(sqlx::query_as!(
+        Manifest,
+        r#"
+SELECT id, repository, tag, blob_id, digest, content_type_top, content_type_sub, created_at
+FROM manifest
+WHERE repository = $1 AND tag > $2
+ORDER BY tag ASC
+        "#,
+        repository,
+        last,
+    )
+    .fetch_all(&mut **transaction)
+    .await?)
+}
+
+pub async fn find_all_by_repository_last_max(
+    transaction: &mut Transaction<'_, DB>,
+    repository: &str,
+    last: &str,
+    n: i64,
+) -> RegistryResult<Vec<Manifest>> {
+    Ok(sqlx::query_as!(
+        Manifest,
+        r#"
+SELECT id, repository, tag, blob_id, digest, content_type_top, content_type_sub, created_at
+FROM manifest
+WHERE repository = $1 AND tag > $2
+ORDER BY tag ASC
+LIMIT $3
+        "#,
+        repository,
+        last,
+        n
     )
     .fetch_all(&mut **transaction)
     .await?)

@@ -8,4 +8,6 @@ DROP TABLE upload_session;
 
 DROP TABLE repository;
 
+DROP TABLE owner;
+
 DROP EXTENSION "uuid-ossp";

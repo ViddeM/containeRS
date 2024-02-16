@@ -1,8 +1,8 @@
 use rocket::{http::Header, State};
 use sqlx::Pool;
-use uuid::Uuid;
 
 use crate::api::container_spec::Auth;
+use crate::header;
 use crate::{
     api::container_spec::{blobs::utils::octet_stream::OctetStream, LOCATION_HEADER_NAME},
     config::Config,
@@ -41,7 +41,7 @@ pub async fn put_upload_blob<'a>(
     config: &State<Config>,
     db_pool: &State<Pool<DB>>,
 ) -> FinishBlobUploadResponse<'a> {
-    let blob_id = match finalize_blob_upload(
+    if let Err(err) = finalize_blob_upload(
         db_pool,
         config,
         content_length,
@@ -52,16 +52,13 @@ pub async fn put_upload_blob<'a>(
     )
     .await
     {
-        Ok(id) => id,
-        Err(err) => {
-            warn!("Failed to finalize blob upload due to error: {err:?}");
-            return FinishBlobUploadResponse::Failure("Failed to finalize blob upload");
-        }
+        warn!("Failed to finalize blob upload due to error: {err:?}");
+        return FinishBlobUploadResponse::Failure("Failed to finalize blob upload");
     };
 
     FinishBlobUploadResponse::Success(FinishBlobUploadResponseData {
         response: "Blob upload finished",
-        location: Header::new(LOCATION_HEADER_NAME, blob_id.to_string()),
+        location: header!(LOCATION_HEADER_NAME, format!("/v2/{name}/blobs/{digest}",)),
     })
 }
 
@@ -73,7 +70,7 @@ async fn finalize_blob_upload(
     name: &str,
     blob: Option<OctetStream>,
     digest: &str,
-) -> RegistryResult<Uuid> {
+) -> RegistryResult<()> {
     let session_id = SessionId::parse(session_id)?;
 
     let final_session_id = if let Some(blob) = blob {
@@ -93,7 +90,7 @@ async fn finalize_blob_upload(
         session_id
     };
 
-    let blob_id =
+    let _blob_id =
         upload_blob_service::finish_blob_upload(db_pool, config, name, final_session_id, digest)
             .await
             .map_err(|err| {
@@ -101,5 +98,5 @@ async fn finalize_blob_upload(
                 err
             })?;
 
-    Ok(blob_id)
+    Ok(())
 }

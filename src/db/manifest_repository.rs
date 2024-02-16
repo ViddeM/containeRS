@@ -208,3 +208,24 @@ WHERE id = $1
 
     Ok(())
 }
+
+pub async fn delete_tag(
+    transaction: &mut Transaction<'_, DB>,
+    name: &str,
+    tag: &str,
+) -> RegistryResult<()> {
+    sqlx::query_as!(
+        Manifest,
+        r#"
+UPDATE manifest
+SET tag = NULL
+WHERE repository = $1 AND tag = $2
+        "#,
+        name,
+        tag
+    )
+    .execute(&mut **transaction)
+    .await?;
+
+    Ok(())
+}

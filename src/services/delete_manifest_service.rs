@@ -11,6 +11,17 @@ use crate::{
 
 use super::upload_manifest_service::get_manifest_file_path;
 
+pub async fn delete_tag(db_pool: &Pool<DB>, name: &str, tag: &str) -> RegistryResult<()> {
+    let mut transaction = db::new_transaction(db_pool).await?;
+
+    if let Err(err) = manifest_repository::delete_tag(&mut transaction, name, tag).await {
+        warn!("Failed to set tag to null in {name} / {tag} due to err: {err:?}");
+        return Err(RegistryError::FailedToDeleteTag);
+    }
+
+    Ok(())
+}
+
 pub async fn delete_manifest(
     db_pool: &Pool<DB>,
     config: &Config,

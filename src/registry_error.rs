@@ -42,6 +42,8 @@ pub enum RegistryError {
     ManifestFileNotFound,
     #[error("Manifest still references blob")]
     BlobManifestStillExists,
+    #[error("Failed to delete tag")]
+    FailedToDeleteTag,
 }
 
 pub type RegistryResult<T> = Result<T, RegistryError>;

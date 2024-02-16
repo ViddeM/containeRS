@@ -153,24 +153,34 @@ pub enum DeleteManifestResponse {
     Failure(()),
 }
 
-#[delete("/v2/<name>/manifests/<digest>")]
+#[delete("/v2/<name>/manifests/<reference>")]
 pub async fn delete_manifest(
     db_pool: &State<Pool<DB>>,
     config: &State<Config>,
     _auth: Auth,
     name: &str,
-    digest: &str,
+    reference: &str,
 ) -> DeleteManifestResponse {
-    if let Err(err) = delete_manifest_service::delete_manifest(db_pool, config, name, digest).await
-    {
-        match err {
-            RegistryError::ManifestNotFound => {
-                return DeleteManifestResponse::NotFound(());
+    if reference.starts_with("sha256:") {
+        info!("Reference understood to be digest {reference}");
+        if let Err(err) =
+            delete_manifest_service::delete_manifest(db_pool, config, name, reference).await
+        {
+            match err {
+                RegistryError::ManifestNotFound => {
+                    return DeleteManifestResponse::NotFound(());
+                }
+                err => {
+                    error!("Failed to delete manifest, err: {err:?}");
+                    return DeleteManifestResponse::Failure(());
+                }
             }
-            err => {
-                error!("Failed to delete manifest, err: {err:?}");
-                return DeleteManifestResponse::Failure(());
-            }
+        }
+    } else {
+        info!("Reference understood to be tag {reference}");
+        if let Err(err) = delete_manifest_service::delete_tag(db_pool, name, reference).await {
+            error!("Failed to delete tag, err: {err:?}");
+            return DeleteManifestResponse::Failure(());
         }
     }
 

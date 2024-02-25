@@ -1,0 +1,55 @@
+@import "../../../resources/styles/vars.scss";
+
+.baseButtonStyle {
+  background-color: $color-accent-500;
+  border: 2px solid $color-accent-500;
+
+  border-radius: $border-radius;
+  padding: $padding-small;
+  cursor: pointer;
+
+  color: $color-text-inverted;
+
+  width: 160px;
+  height: 40px;
+  font-size: medium;
+  font-weight: bold;
+
+  transition: 0.25s background-color;
+
+  &:hover {
+    background-color: $color-accent-700;
+  }
+
+  &:active {
+    background-color: $color-accent-900;
+  }
+}
+
+.button-primary {
+  background-color: $color-primary-500;
+  border-color: $color-primary-500;
+  color: $color-text;
+
+  &:hover {
+    background-color: $color-primary-300;
+  }
+
+  &:active {
+    background-color: $color-primary-100;
+  }
+}
+
+.button-secondary {
+  background-color: $color-secondary-500;
+  border-color: $color-secondary-500;
+  color: $color-text;
+
+  &:hover {
+    background-color: $color-secondary-300;
+  }
+
+  &:active {
+    background-color: $color-secondary-100;
+  }
+}

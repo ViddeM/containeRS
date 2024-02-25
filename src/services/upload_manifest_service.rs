@@ -22,7 +22,7 @@ pub async fn upload_manifest(
     reference: &str,
     manifest_type: &ContentType,
     data: Vec<u8>,
-) -> RegistryResult<(Uuid, String)> {
+) -> RegistryResult<(Uuid, String, Option<String>)> {
     let calculated_digest = format!("sha256:{}", sha256::digest(data.as_slice()));
 
     let image_manifest = DockerImageManifestV2::parse(manifest_type, data.clone())?;
@@ -96,7 +96,11 @@ pub async fn upload_manifest(
 
     transaction.commit().await?;
 
-    Ok((manifest.id, calculated_digest))
+    Ok((
+        manifest.id,
+        calculated_digest,
+        image_manifest.subject.map(|s| s.digest),
+    ))
 }
 
 async fn save_manifest_by_tag(

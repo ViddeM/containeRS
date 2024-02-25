@@ -58,6 +58,14 @@ pub struct DockerImageManifestV2 {
     pub config: ManifestConfig,
     pub layers: Vec<LayerManifest>,
     pub media_type: Option<String>,
+    pub subject: Option<Subject>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Subject {
+    pub digest: String,
+    // TODO
 }
 
 impl DockerImageManifestV2 {

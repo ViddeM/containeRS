@@ -9,13 +9,14 @@ use uuid::Uuid;
 use crate::{
     config::Config,
     db::DB,
+    header,
     registry_error::{RegistryError, RegistryResult},
     services::{self, delete_manifest_service, get_manifest_service},
 };
 
 use super::{
     blobs::utils::content_length::ContentLength, Auth, DOCKER_CONTENT_DIGEST_HEADER_NAME,
-    LOCATION_HEADER_NAME,
+    LOCATION_HEADER_NAME, OCI_SUBJECT_HEADER_NAME,
 };
 
 #[derive(Responder, Debug)]
@@ -73,6 +74,7 @@ pub struct PutManifestResponseData<'a> {
     response: &'a str,
     location: Header<'a>,
     docker_content_digest: Header<'a>,
+    oci_subject: Header<'a>,
 }
 
 #[derive(Responder, Debug)]
@@ -107,11 +109,17 @@ pub async fn put_manifest<'a>(
     )
     .await
     {
-        Ok((manifest_id, digest)) => PutManifestResponse::Success(PutManifestResponseData {
-            response: "Upload manifest successful",
-            location: Header::new(LOCATION_HEADER_NAME, format!("/{manifest_id}")),
-            docker_content_digest: Header::new(DOCKER_CONTENT_DIGEST_HEADER_NAME, digest),
-        }),
+        Ok((manifest_id, digest, subject_digest)) => {
+            PutManifestResponse::Success(PutManifestResponseData {
+                response: "Upload manifest successful",
+                location: header!(LOCATION_HEADER_NAME, format!("/{manifest_id}")),
+                docker_content_digest: header!(DOCKER_CONTENT_DIGEST_HEADER_NAME, digest),
+                oci_subject: header!(
+                    OCI_SUBJECT_HEADER_NAME,
+                    subject_digest.unwrap_or(String::new())
+                ),
+            })
+        }
         Err(e) => {
             error!("Failed to upload manifest {e:?}");
             PutManifestResponse::Failure("Failed to upload manifest")
@@ -127,10 +135,10 @@ async fn upload_manifest(
     manifest_type: &ContentType,
     content_length: ContentLength,
     data: Vec<u8>,
-) -> RegistryResult<(Uuid, String)> {
+) -> RegistryResult<(Uuid, String, Option<String>)> {
     content_length.validate_data_length(data.len())?;
 
-    let (id, digest) = services::upload_manifest_service::upload_manifest(
+    let (id, digest, subject_digest) = services::upload_manifest_service::upload_manifest(
         db_pool,
         config,
         name,
@@ -140,7 +148,7 @@ async fn upload_manifest(
     )
     .await?;
 
-    Ok((id, digest))
+    Ok((id, digest, subject_digest))
 }
 
 #[derive(Responder)]

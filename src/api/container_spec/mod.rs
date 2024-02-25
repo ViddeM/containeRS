@@ -24,6 +24,7 @@ const RANGE_HEADER_NAME: &str = "Range";
 const DOCKER_UPLOAD_UUID_HEADER_NAME: &str = "Docker-Upload-UUID";
 const DOCKER_CONTENT_DIGEST_HEADER_NAME: &str = "Docker-Content-Digest";
 const APPLICATION_TYPE_OCTET_STREAM: &str = "application/octet-stream";
+const OCI_SUBJECT_HEADER_NAME: &str = "OCI-Subject";
 
 pub struct Auth {
     username: String,

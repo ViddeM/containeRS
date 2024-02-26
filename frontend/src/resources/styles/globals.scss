@@ -21,13 +21,13 @@ body {
 
 body {
   color: $color-text;
-  background-color: $color-background-100;
+  background-color: $color-background-950;
   font-family: "PT Sans";
   font-weight: 400;
 }
 
 a {
-  color: inherit;
+  color: $color-accent-500;
   text-decoration: none;
 }
 
@@ -77,11 +77,27 @@ small {
 .card {
   padding: $padding-large;
   border-radius: $border-radius;
-  background-color: $color-background-300;
+  background-color: $color-background-900;
 }
 
 .margin {
   margin: $margin;
+}
+
+.margin-top {
+  margin-top: $margin;
+}
+
+.margin-right {
+  margin-right: $margin;
+}
+
+.margin-down {
+  margin-bottom: $margin;
+}
+
+.margin-left {
+  margin-left: $margin;
 }
 
 .padding {

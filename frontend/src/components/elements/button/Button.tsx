@@ -15,3 +15,11 @@ export const Button = ({ className, variant, ...props }: ButtonProps) => {
 
   return <button className={style} {...props}></button>;
 };
+
+export type IconButtonProps = ButtonProps;
+
+export const IconButton = ({ className, ...props }: IconButtonProps) => {
+  const style = `${className} ${styles.iconButton}`;
+
+  return <Button className={style} {...props} />;
+};

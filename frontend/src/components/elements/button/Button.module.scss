@@ -1,9 +1,9 @@
 @import "../../../resources/styles/vars.scss";
 
 .baseButtonStyle {
-  background-color: $color-accent-500;
-  border: 2px solid $color-accent-500;
+  background-color: $color-accent-700;
 
+  border: none;
   border-radius: $border-radius;
   padding: $padding-small;
   cursor: pointer;
@@ -16,7 +16,7 @@
   font-weight: bold;
 
   &:hover {
-    background-color: $color-accent-700;
+    background-color: $color-accent-800;
   }
 
   &:active {
@@ -26,21 +26,18 @@
 
 .button-primary {
   background-color: $color-primary-500;
-  border-color: $color-primary-500;
-  color: $color-text;
 
   &:hover {
-    background-color: $color-primary-700;
+    background-color: $color-primary-600;
   }
 
   &:active {
-    background-color: $color-primary-300;
+    background-color: $color-primary-400;
   }
 }
 
 .button-secondary {
   background-color: $color-secondary-500;
-  border-color: $color-secondary-500;
   color: $color-text;
 
   &:hover {
@@ -50,4 +47,10 @@
   &:active {
     background-color: $color-secondary-100;
   }
+}
+
+.iconButton {
+  border-radius: 50%;
+  width: 2em;
+  height: 2em;
 }

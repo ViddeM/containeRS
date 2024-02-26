@@ -4,7 +4,7 @@ import styles from "./Header.module.scss";
 export const Header = () => {
   return (
     <header className={styles.header}>
-      <h2>Containers</h2>
+      <h3>Containers</h3>
 
       <Button variant="primary">Login</Button>
     </header>

@@ -16,19 +16,16 @@
 }
 
 .textFieldContainer {
-  border: 1px solid $color-primary-300;
+  border: 1px solid $color-secondary-400;
   border-radius: $border-radius;
-  padding: 3px;
+  padding: $padding-small;
   display: flex;
   flex-direction: row;
   align-items: baseline;
-  background-color: $color-background-900;
+  background-color: $color-secondary-600;
 
-  &:hover,
-  &:focus-within {
-    border: 1px solid $color-primary-500;
-    color: $color-text-500;
-    outline: none;
+  ::placeholder {
+    font-weight: bold;
   }
 }
 

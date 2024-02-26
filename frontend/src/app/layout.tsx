@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PT_Sans } from "next/font/google";
+import "../resources/styles/colors.scss";
 import "../resources/styles/globals.scss";
 import { Header } from "@/components/views/header/Header";
 

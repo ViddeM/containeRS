@@ -1,4 +1,20 @@
+@import "../../../resources/styles/vars.scss";
+
 .list {
   display: flex;
   flex-direction: column;
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.imageRow {
+  background-color: $color-background-500;
+  margin: 1em 0;
+  padding: $padding-small;
+  border-radius: $border-radius;
 }

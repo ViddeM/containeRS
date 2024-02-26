@@ -27,40 +27,68 @@ const IMAGES: Image[] = [
 export const ImagesList = () => {
   return (
     <div className={`card`}>
-      <table>
-        <thead>
-          <tr>
-            <th colSpan={3}>
-              <h3>Images</h3>
-            </th>
-          </tr>
-          <tr>
-            <th>Name</th>
-            <th>Author</th>
-            <th>Last modified</th>
-          </tr>
-        </thead>
-        <tbody>
-          {IMAGES.map((image) => (
-            <ImageRow image={image} key={image.name} />
-          ))}
-        </tbody>
-      </table>
+      <h3>Images</h3>
+      <div>
+        {IMAGES.map((image) => (
+          <ImageRow image={image} key={image.name} />
+        ))}
+      </div>
     </div>
   );
 };
 
 const ImageRow = ({ image }: { image: Image }) => {
-  const now = Date.now();
-  const lastModified = new Date(image.lastModified);
-
-  const diff = now - lastModified.getDate();
+  const diffString = getDiffString(image.lastModified);
 
   return (
-    <tr key={image.name}>
-      <td>{image.name}</td>
-      <td>{image.author}</td>
-      <td>{image.lastModified}</td>
-    </tr>
+    <div className={styles.imageRow}>
+      <div className={styles.row}>
+        <span>{image.name}</span>
+        <span>{diffString}</span>
+      </div>
+      <div className={styles.row}>{image.author}</div>
+    </div>
   );
 };
+
+function getDiffString(dateTime: string) {
+  const now = new Date();
+  const lastModified = new Date(dateTime);
+
+  const diff = now.getTime() - lastModified.getTime();
+  const diffSeconds = Math.round(diff / 1000);
+
+  const getScale = () => {
+    if (diffSeconds < 60) {
+      return { number: diffSeconds, unit: "second" };
+    }
+
+    const diffMinutes = (diffSeconds - (diffSeconds % 60)) / 60;
+    if (diffSeconds < 60) {
+      return { number: diffMinutes, unit: "minute" };
+    }
+
+    const diffHours = (diffMinutes - (diffMinutes % 60)) / 60;
+    if (diffHours < 24) {
+      return { number: diffHours, unit: "hour" };
+    }
+
+    const diffDays = (diffHours - (diffHours % 24)) / 24;
+    if (diffDays < 30) {
+      return { number: diffDays, unit: "day" };
+    }
+
+    if (diffDays < 365) {
+      const diffMonths = (diffDays - (diffDays % 30)) / 30;
+      return { number: diffMonths, unit: "month" };
+    }
+
+    const diffYears = (diffDays - (diffDays % 365)) / 365;
+    return { number: diffYears, unit: "year" };
+  };
+
+  const diffObj = getScale();
+  return `${diffObj.number} ${diffObj.unit}${
+    diffObj.number > 1 ? "s" : ""
+  } ago`;
+}

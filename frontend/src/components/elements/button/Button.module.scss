@@ -15,8 +15,6 @@
   font-size: medium;
   font-weight: bold;
 
-  transition: 0.25s background-color;
-
   &:hover {
     background-color: $color-accent-700;
   }
@@ -32,11 +30,11 @@
   color: $color-text;
 
   &:hover {
-    background-color: $color-primary-300;
+    background-color: $color-primary-700;
   }
 
   &:active {
-    background-color: $color-primary-100;
+    background-color: $color-primary-300;
   }
 }
 

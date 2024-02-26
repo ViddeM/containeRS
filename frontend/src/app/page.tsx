@@ -1,4 +1,4 @@
-import styles from "./page.module.css";
+import styles from "./page.module.scss";
 import { ImagesList } from "@/components/views/images-list/ImagesList";
 
 export default function Home() {

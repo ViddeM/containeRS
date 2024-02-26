@@ -1,5 +1,12 @@
 @import "../../../resources/styles/vars.scss";
 
+.imageListCard {
+  width: 100%;
+
+  @media screen {
+  }
+}
+
 .list {
   display: flex;
   flex-direction: column;

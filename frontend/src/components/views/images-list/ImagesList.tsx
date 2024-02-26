@@ -1,3 +1,4 @@
+import { TextField } from "@/components/elements/textfield/TextField";
 import styles from "./ImagesList.module.scss";
 
 type Image = {
@@ -26,8 +27,11 @@ const IMAGES: Image[] = [
 
 export const ImagesList = () => {
   return (
-    <div className={`card`}>
-      <h3>Images</h3>
+    <div className={`card ${styles.imageListCard}`}>
+      <div className={styles.row}>
+        <h3>Images</h3>
+        <TextField postfixText="Search images" />
+      </div>
       <div>
         {IMAGES.map((image) => (
           <ImageRow image={image} key={image.name} />
@@ -43,10 +47,15 @@ const ImageRow = ({ image }: { image: Image }) => {
   return (
     <div className={styles.imageRow}>
       <div className={styles.row}>
-        <span>{image.name}</span>
+        <span>
+          <b>{image.name}</b>
+        </span>
         <span>{diffString}</span>
       </div>
-      <div className={styles.row}>{image.author}</div>
+      <div className={styles.row}>
+        <p />
+        {image.author}
+      </div>
     </div>
   );
 };

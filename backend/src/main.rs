@@ -68,14 +68,15 @@ async fn rocket() -> _ {
                 api::container_spec::tags::get_tags,
             ],
         )
-        .mount(
-            "/api",
-            routes![
-                api::images::get_images,
-                api::images::run_image,
-                api::images::get_container_status
-            ],
-        )
+        // TODO: Auth
+        // .mount(
+        //     "/api",
+        //     routes![
+        //         api::images::get_images,
+        //         api::images::run_image,
+        //         api::images::get_container_status
+        //     ],
+        // )
         .mount("/public", FileServer::from("static/public"))
         .mount(
             "/web",

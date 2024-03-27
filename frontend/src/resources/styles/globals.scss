@@ -21,7 +21,7 @@ body {
 
 body {
   color: $color-text;
-  background-color: $color-background-950;
+  background-color: $color-background-900;
   font-family: "PT Sans";
   font-weight: 400;
 }
@@ -47,31 +47,42 @@ html {
 h1 {
   font-size: 4.21rem; /* 67.36px */
   margin: 0;
+  color: $color-text-50;
 }
 
 h2 {
   font-size: 3.158rem; /* 50.56px */
   margin: 0;
+  color: $color-text-100;
 }
 
 h3 {
   font-size: 2.369rem; /* 37.92px */
   margin: 0;
+  color: $color-text-200;
 }
 
 h4 {
   font-size: 1.777rem; /* 28.48px */
   margin: 0;
+  color: $color-text-300;
 }
 
 h5 {
   font-size: 1.333rem; /* 21.28px */
   margin: 0;
+  color: $color-text-400;
 }
 
 small {
   font-size: 0.75rem; /* 12px */
   margin: 0;
+  color: $color-text-400;
+}
+
+p,
+span {
+  color: $color-text-300;
 }
 
 .card {

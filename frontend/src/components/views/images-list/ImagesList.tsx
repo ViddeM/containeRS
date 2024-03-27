@@ -49,14 +49,14 @@ const ImageRow = ({ image }: { image: Image }) => {
     <div className={styles.imageRow}>
       <div className={styles.col}>
         <div className={styles.row}>
-          <span>
+          <p>
             <b>{image.name}</b>
-          </span>
-          <span>{diffString}</span>
+          </p>
+          <p>{diffString}</p>
         </div>
         <div className={styles.row}>
           <p />
-          {image.author}
+          <p>{image.author}</p>
         </div>
       </div>
       <Link href={`/images/${image.name}`}>

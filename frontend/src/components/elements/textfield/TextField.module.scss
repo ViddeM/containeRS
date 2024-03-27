@@ -16,13 +16,13 @@
 }
 
 .textFieldContainer {
-  border: 1px solid $color-secondary-400;
+  border: 1px solid $color-background-600;
   border-radius: $border-radius;
   padding: $padding-small;
   display: flex;
   flex-direction: row;
   align-items: baseline;
-  background-color: $color-secondary-600;
+  background-color: $color-background-800;
 
   ::placeholder {
     font-weight: bold;

@@ -67,7 +67,7 @@ pub async fn upload_manifest(
             &layer.digest,
         )
         .await?
-        .ok_or(RegistryError::InvalidDigest)?;
+        .ok_or(RegistryError::InvalidDigest)?; // TODO: This should probably return BLOB_UNKNOWN
 
         match manifest_layer_repository::find_by_manifest_and_blob(
             &mut transaction,

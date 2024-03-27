@@ -76,6 +76,10 @@ impl<'r> FromRequest<'r> for ContentRange {
 
 impl ContentRange {
     pub fn validate(&self, content_length: &ContentLength) -> RegistryResult<()> {
+        let Some(length) = content_length.length else {
+            return Ok(());
+        };
+
         let expected_size = self
             .range_end
             .checked_sub(self.range_start)
@@ -85,10 +89,10 @@ impl ContentRange {
             })?
             + 1; // Plus 1 because the length should be inclusive
 
-        if expected_size != content_length.length {
+        if expected_size != length {
             warn!(
                 "Content range expected size {expected_size} did not match content_length {}",
-                content_length.length
+                length
             );
             return Err(RegistryError::InvalidContentRange);
         }

@@ -25,3 +25,4 @@ docker-api = "0.14"
 rocket_dyn_templates = { version = "0.1", features = ["handlebars"] }
 reqwest = { version = "0.11", features = ["json"] }
 log = "0.4"
+openssl = { version = "0.10", features = ["vendored"] }

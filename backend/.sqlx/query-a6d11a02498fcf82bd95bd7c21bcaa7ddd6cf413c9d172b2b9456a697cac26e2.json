@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nDELETE\nFROM manifest\nWHERE id = $1\n    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a6d11a02498fcf82bd95bd7c21bcaa7ddd6cf413c9d172b2b9456a697cac26e2"
+}

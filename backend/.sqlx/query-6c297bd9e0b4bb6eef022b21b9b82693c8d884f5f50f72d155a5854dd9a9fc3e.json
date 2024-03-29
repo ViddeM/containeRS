@@ -1,0 +1,66 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nSELECT id, repository, tag, blob_id, digest, content_type_top, content_type_sub, created_at\nFROM manifest\nWHERE repository = $1 AND tag > $2\nORDER BY tag ASC\nLIMIT $3\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "repository",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "tag",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "blob_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "digest",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "content_type_top",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "content_type_sub",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6c297bd9e0b4bb6eef022b21b9b82693c8d884f5f50f72d155a5854dd9a9fc3e"
+}

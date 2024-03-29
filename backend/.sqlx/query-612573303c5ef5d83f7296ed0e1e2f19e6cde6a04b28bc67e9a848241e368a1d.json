@@ -1,0 +1,69 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nINSERT INTO manifest(repository, tag, blob_id, digest, content_type_top, content_type_sub)\nVALUES              ($1,         $2,  $3,      $4,     $5,               $6)\nRETURNING id, repository, tag, blob_id, digest, content_type_top, content_type_sub, created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "repository",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "tag",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "blob_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "digest",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "content_type_top",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "content_type_sub",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "612573303c5ef5d83f7296ed0e1e2f19e6cde6a04b28bc67e9a848241e368a1d"
+}

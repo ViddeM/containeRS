@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nUPDATE upload_session\nSET is_finished=TRUE\nWHERE id = $1 AND repository = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3ba848f2cc895f004b284b0207edc0b5c861e1a9377d448b5b6791573fc6d039"
+}

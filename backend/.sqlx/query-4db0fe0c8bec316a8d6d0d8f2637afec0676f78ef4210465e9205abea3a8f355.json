@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nUPDATE manifest\nSET tag = NULL\nWHERE repository = $1 AND tag = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4db0fe0c8bec316a8d6d0d8f2637afec0676f78ef4210465e9205abea3a8f355"
+}

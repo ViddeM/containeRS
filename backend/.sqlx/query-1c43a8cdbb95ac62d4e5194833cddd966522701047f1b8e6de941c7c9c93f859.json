@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nSELECT id, previous_session, starting_byte_index, digest, repository, created_at, is_finished\nFROM upload_session\nWHERE previous_session = $1 AND repository = $2\n    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "previous_session",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "starting_byte_index",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "digest",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "repository",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_finished",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "1c43a8cdbb95ac62d4e5194833cddd966522701047f1b8e6de941c7c9c93f859"
+}

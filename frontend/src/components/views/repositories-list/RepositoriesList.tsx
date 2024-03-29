@@ -1,32 +1,32 @@
 "use client";
 
 import { TextField } from "@/components/elements/textfield/TextField";
-import styles from "./ImagesList.module.scss";
+import styles from "./RepositoriesList.module.scss";
 import { useState } from "react";
 import { IconButton } from "@/components/elements/button/Button";
 import { faAngleRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
 
-type Image = {
+type Repository = {
   name: string;
   author: string;
   lastModified: string;
 };
 
-export const ImagesList = () => {
+export const RepositoriesList = () => {
   const [filterText, setFilterText] = useState<string>("");
 
-  const filteredImages = IMAGES.filter(
+  const filteredRepos = REPOSITORIES.filter(
     (i) => i.name.includes(filterText) || i.author.includes(filterText)
   );
 
   return (
-    <div className={`card ${styles.imageListCard}`}>
-      <h3>Images</h3>
+    <div className={`${styles.repositoriesListCard}`}>
+      <h3>Repositories</h3>
       <TextField
         maxLength={100}
-        placeholder="Search images"
+        placeholder="Search repositories"
         className={`${styles.searchField} margin-top`}
         inputClassName={styles.searchField}
         value={filterText}
@@ -34,32 +34,32 @@ export const ImagesList = () => {
       />
 
       <div>
-        {filteredImages.map((image) => (
-          <ImageRow image={image} key={image.name} />
+        {filteredRepos.map((repo) => (
+          <RepositoryRow repo={repo} key={repo.name} />
         ))}
       </div>
     </div>
   );
 };
 
-const ImageRow = ({ image }: { image: Image }) => {
-  const diffString = getDiffString(image.lastModified);
+const RepositoryRow = ({ repo }: { repo: Repository }) => {
+  const diffString = getDiffString(repo.lastModified);
 
   return (
-    <div className={styles.imageRow}>
+    <div className={styles.repositoryRow}>
       <div className={styles.col}>
         <div className={styles.row}>
           <p>
-            <b>{image.name}</b>
+            <b>{repo.name}</b>
           </p>
           <p>{diffString}</p>
         </div>
         <div className={styles.row}>
           <p />
-          <p>{image.author}</p>
+          <p>{repo.author}</p>
         </div>
       </div>
-      <Link href={`/images/${image.name}`}>
+      <Link href={`/repositories/${repo.name}`}>
         <IconButton className={"margin-left margin-right"}>
           <FontAwesomeIcon icon={faAngleRight} />
         </IconButton>
@@ -110,7 +110,7 @@ function getDiffString(dateTime: string) {
   } ago`;
 }
 
-const IMAGES: Image[] = [
+const REPOSITORIES: Repository[] = [
   {
     name: "PelleSvans",
     author: "Vidde",

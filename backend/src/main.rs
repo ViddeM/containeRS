@@ -47,8 +47,8 @@ async fn rocket() -> _ {
         .expect("Failed to run migrations");
 
     // TODO: avoid hardcoded URL
-    let docker = docker_api::Docker::new(config.docker_socket_url.clone())
-        .expect("Failed to connect to docker");
+    // let docker = docker_api::Docker::new(config.docker_socket_url.clone())
+    //    .expect("Failed to connect to docker");
 
     rocket::build()
         .mount(
@@ -88,7 +88,7 @@ async fn rocket() -> _ {
         .register("/", catchers![unauthorized_catcher])
         .manage(db_pool)
         .manage(config)
-        .manage(docker)
+        // .manage(docker)
         .attach(Template::fairing())
 }
 

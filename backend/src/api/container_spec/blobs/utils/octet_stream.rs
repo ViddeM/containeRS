@@ -18,13 +18,13 @@ impl<'r> FromData<'r> for OctetStream {
         req: &'r Request<'_>,
         data: Data<'r>,
     ) -> data::Outcome<'r, Self, Self::Error> {
-        let Some(content_type) = req.headers().get_one(CONTENT_TYPE_HEADER_NAME) else {
-            return data::Outcome::Forward((data, Status::BadRequest));
-        };
-
-        if content_type != APPLICATION_TYPE_OCTET_STREAM {
-            warn!("Non-octet stream content type, got {content_type} expected {APPLICATION_TYPE_OCTET_STREAM}");
-            return data::Outcome::Forward((data, Status::BadRequest));
+        if let Some(content_type) = req.headers().get_one(CONTENT_TYPE_HEADER_NAME) {
+            if content_type != APPLICATION_TYPE_OCTET_STREAM {
+                warn!("Non-octet stream content type, got {content_type} expected {APPLICATION_TYPE_OCTET_STREAM}");
+                return data::Outcome::Forward((data, Status::BadRequest));
+            }
+        } else {
+            warn!("Missing content type header");
         }
 
         let bytes = match Vec::<u8>::from_data(req, data).await {

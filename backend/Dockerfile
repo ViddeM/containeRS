@@ -52,6 +52,9 @@ ENV PORT=8080
 EXPOSE 8080
 
 COPY --from=build /app/target/x86_64-unknown-linux-musl/release/container-registry-rs /
+COPY --from=build /app/static ./static
+COPY --from=build /app/templates ./templates
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY migrations /
 
 CMD ["/container-registry-rs"]

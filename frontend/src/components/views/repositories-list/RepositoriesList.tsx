@@ -7,17 +7,16 @@ import { IconButton } from "@/components/elements/button/Button";
 import { faAngleRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
+import { Repository } from "@/api/Repository";
 
-type Repository = {
-  name: string;
-  author: string;
-  lastModified: string;
-};
+export interface RepositoriesListProps {
+  repositories: Repository[];
+}
 
-export const RepositoriesList = () => {
+export const RepositoriesList = ({ repositories }: RepositoriesListProps) => {
   const [filterText, setFilterText] = useState<string>("");
 
-  const filteredRepos = REPOSITORIES.filter(
+  const filteredRepos = repositories.filter(
     (i) => i.name.includes(filterText) || i.author.includes(filterText)
   );
 
@@ -109,41 +108,3 @@ function getDiffString(dateTime: string) {
     diffObj.number > 1 ? "s" : ""
   } ago`;
 }
-
-const REPOSITORIES: Repository[] = [
-  {
-    name: "PelleSvans",
-    author: "Vidde",
-    lastModified: "2024-02-23T14:22:53",
-  },
-  {
-    name: "Dallepoo",
-    author: "Vidde",
-    lastModified: "2023-01-21T09:19:12",
-  },
-  {
-    name: "Grott",
-    author: "Lea",
-    lastModified: "2023-11-21T09:19:12",
-  },
-  {
-    name: "Leffeeeepo",
-    author: "Vidde",
-    lastModified: "2024-02-25T20:22:53",
-  },
-  {
-    name: "Fuffuj",
-    author: "Pan",
-    lastModified: "1998-09-24T15:21:53",
-  },
-  {
-    name: "Droopy",
-    author: "Sanch",
-    lastModified: "2024-02-26T23:00:53",
-  },
-  {
-    name: "Puff",
-    author: "Piff",
-    lastModified: "2024-02-26T22:22:53",
-  },
-];

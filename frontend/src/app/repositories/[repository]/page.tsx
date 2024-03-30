@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { RepositoryView } from "@/components/views/repository-view/RepositoryView";
 import { Suspense } from "react";
 

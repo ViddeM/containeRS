@@ -8,14 +8,25 @@ import { faAngleRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
 import { ListRepository } from "@/api/Repository";
-import { dateStringToDiffString, getDiffString } from "@/util/DateUtil";
+import { dateStringToDiffString } from "@/util/DateUtil";
+import { Api } from "@/api/Api";
+import { Error } from "@/components/views/error/Error";
 
-export interface RepositoriesListProps {
-  repositories: ListRepository[];
-}
-
-export const RepositoriesList = ({ repositories }: RepositoriesListProps) => {
+export const RepositoriesList = async () => {
   const [filterText, setFilterText] = useState<string>("");
+
+  const data = await Api.repositories.getAll();
+
+  if (!data.isSuccess) {
+    let error = data.error || "unknown error";
+    return <Error message={error} />;
+  }
+
+  if (!data.data) {
+    return <Error message="No data" />;
+  }
+
+  const repositories = data.data!!.repositories;
 
   const filteredRepos = repositories.filter(
     (i) => i.name.includes(filterText) || i.author.includes(filterText)

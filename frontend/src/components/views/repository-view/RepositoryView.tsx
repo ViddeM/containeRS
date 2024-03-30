@@ -1,12 +1,29 @@
-import { Repository } from "@/api/Repository";
 import { getDiffString } from "@/util/DateUtil";
 import styles from "./RepositoryView.module.scss";
+import { Api } from "@/api/Api";
+import { Error } from "@/components/views/error/Error";
 
 export interface RepositoryViewProps {
-  repository: Repository;
+  repositoryName: string;
 }
 
-export const RepositoryView = ({ repository }: RepositoryViewProps) => {
+export const RepositoryView = async ({
+  repositoryName,
+}: RepositoryViewProps) => {
+  const data = await Api.repositories.getOne(repositoryName);
+
+  if (!data.isSuccess) {
+    let message = data.error || "unknown error";
+    console.error("Failed to retrieve repository from server, response", data);
+    return <Error message={message} />;
+  }
+
+  if (!data.data) {
+    return <Error message={"Got no data from server"} />;
+  }
+
+  const repository = data.data!!;
+
   const tags = repository.tags
     .map((tag) => {
       return {

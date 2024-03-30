@@ -1,22 +1,13 @@
-import { Api } from "@/api/Api";
+export const dynamic = "force-dynamic";
 import { RepositoriesList } from "@/components/views/repositories-list/RepositoriesList";
-import { Error } from "@/components/views/error/Error";
+import { Suspense } from "react";
 
 export default async function Home() {
-  const data = await Api.repositories.getAll();
-
-  if (!data.isSuccess) {
-    let error = data.error || "unknown error";
-    return <Error message={error} />;
-  }
-
-  if (!data.data) {
-    return <Error message="No data" />;
-  }
-
   return (
     <main className="main">
-      <RepositoriesList repositories={data.data!!.repositories} />
+      <Suspense fallback={<p>Loading...</p>}>
+        <RepositoriesList />
+      </Suspense>
     </main>
   );
 }

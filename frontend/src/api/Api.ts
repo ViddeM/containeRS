@@ -24,7 +24,7 @@ export type Response<T> = {
 };
 
 async function get<T>(endpoint: string): Promise<Response<T>> {
-  const res = await fetch(`${baseUrl}${endpoint}`, { next: { revalidate: 5 } });
+  const res = await fetch(`${baseUrl}${endpoint}`, { cache: "no-store" });
 
   if (!res.ok) {
     console.error("Failed to send request, res: ", res);

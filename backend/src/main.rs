@@ -68,6 +68,10 @@ async fn rocket() -> _ {
                 api::container_spec::tags::get_tags,
             ],
         )
+        .mount(
+            "/api",
+            routes![api::frontend::repositories::get_all_repositories],
+        )
         // TODO: Auth
         // .mount(
         //     "/api",

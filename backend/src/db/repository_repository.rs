@@ -1,7 +1,10 @@
 use sqlx::Transaction;
 use uuid::Uuid;
 
-use crate::{models::repository::Repository, registry_error::RegistryResult};
+use crate::{
+    models::repository::{Repository, ViewableRepository},
+    registry_error::RegistryResult,
+};
 
 use super::DB;
 
@@ -47,6 +50,21 @@ pub async fn get_all(transaction: &mut Transaction<'_, DB>) -> RegistryResult<Ve
         r#"
 SELECT id, owner, namespace_name, created_at
 FROM repository
+        "#
+    )
+    .fetch_all(&mut **transaction)
+    .await?)
+}
+
+pub async fn find_all_with_owners(
+    transaction: &mut Transaction<'_, DB>,
+) -> RegistryResult<Vec<ViewableRepository>> {
+    Ok(sqlx::query_as!(
+        ViewableRepository,
+        r#"
+SELECT r.namespace_name, r.created_at, o.username
+FROM repository r
+JOIN owner o ON o.id = r.owner
         "#
     )
     .fetch_all(&mut **transaction)

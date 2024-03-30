@@ -70,7 +70,10 @@ async fn rocket() -> _ {
         )
         .mount(
             "/api",
-            routes![api::frontend::repositories::get_all_repositories],
+            routes![
+                api::frontend::repositories::get_all_repositories,
+                api::frontend::repositories::get_repository
+            ],
         )
         // TODO: Auth
         // .mount(

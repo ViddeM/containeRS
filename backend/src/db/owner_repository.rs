@@ -1,4 +1,5 @@
 use sqlx::Transaction;
+use uuid::Uuid;
 
 use crate::{models::owner::Owner, registry_error::RegistryResult};
 
@@ -35,5 +36,19 @@ WHERE username = $1
         username
     )
     .fetch_optional(&mut **transaction)
+    .await?)
+}
+
+pub async fn find_by_id(transaction: &mut Transaction<'_, DB>, id: Uuid) -> RegistryResult<Owner> {
+    Ok(sqlx::query_as!(
+        Owner,
+        r#"
+SELECT id, username, created_at
+FROM owner
+WHERE id = $1
+        "#,
+        id
+    )
+    .fetch_one(&mut **transaction)
     .await?)
 }

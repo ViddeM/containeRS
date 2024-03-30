@@ -1,4 +1,4 @@
-import { Repositories } from "./Repository";
+import { Repositories, Repository } from "./Repository";
 
 let baseUrl = "/api";
 
@@ -10,6 +10,9 @@ export const Api = {
   repositories: {
     getAll: () => {
       return get<Repositories>("/repositories");
+    },
+    getOne: (name: string) => {
+      return get<Repository>(`/repositories/${name}`);
     },
   },
 };

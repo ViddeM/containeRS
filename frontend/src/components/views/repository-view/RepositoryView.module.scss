@@ -1,0 +1,15 @@
+@import "../../../resources/styles/vars.scss";
+
+.tagRow {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tagsList {
+  display: grid;
+  grid-template-columns: minmax(300px, 100%);
+  row-gap: $margin;
+}

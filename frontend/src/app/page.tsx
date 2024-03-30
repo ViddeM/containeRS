@@ -5,8 +5,6 @@ import { Error } from "@/components/views/error/Error";
 export default async function Home() {
   const data = await Api.repositories.getAll();
 
-  console.log("What did we actually get?", data.data?.repositories);
-
   if (!data.isSuccess) {
     let error = data.error || "unknown error";
     return <Error message={error} />;

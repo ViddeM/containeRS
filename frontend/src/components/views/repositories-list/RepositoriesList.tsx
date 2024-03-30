@@ -7,10 +7,11 @@ import { IconButton } from "@/components/elements/button/Button";
 import { faAngleRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
-import { Repository } from "@/api/Repository";
+import { ListRepository } from "@/api/Repository";
+import { dateStringToDiffString, getDiffString } from "@/util/DateUtil";
 
 export interface RepositoriesListProps {
-  repositories: Repository[];
+  repositories: ListRepository[];
 }
 
 export const RepositoriesList = ({ repositories }: RepositoriesListProps) => {
@@ -41,11 +42,11 @@ export const RepositoriesList = ({ repositories }: RepositoriesListProps) => {
   );
 };
 
-const RepositoryRow = ({ repo }: { repo: Repository }) => {
-  const diffString = getDiffString(repo.lastModified);
+const RepositoryRow = ({ repo }: { repo: ListRepository }) => {
+  const diffString = dateStringToDiffString(repo.lastModified);
 
   return (
-    <div className={styles.repositoryRow}>
+    <div className={`${styles.repositoryRow} card`}>
       <div className={styles.col}>
         <div className={styles.row}>
           <p>
@@ -66,45 +67,3 @@ const RepositoryRow = ({ repo }: { repo: Repository }) => {
     </div>
   );
 };
-
-function getDiffString(dateTime: string) {
-  const now = new Date();
-  const lastModified = new Date(dateTime);
-
-  const diff = now.getTime() - lastModified.getTime();
-  const diffSeconds = Math.round(diff / 1000);
-
-  const getScale = () => {
-    if (diffSeconds < 60) {
-      return { number: diffSeconds, unit: "second" };
-    }
-
-    const diffMinutes = (diffSeconds - (diffSeconds % 60)) / 60;
-    if (diffMinutes < 60) {
-      return { number: diffMinutes, unit: "minute" };
-    }
-
-    const diffHours = (diffMinutes - (diffMinutes % 60)) / 60;
-    if (diffHours < 24) {
-      return { number: diffHours, unit: "hour" };
-    }
-
-    const diffDays = (diffHours - (diffHours % 24)) / 24;
-    if (diffDays < 30) {
-      return { number: diffDays, unit: "day" };
-    }
-
-    if (diffDays < 365) {
-      const diffMonths = (diffDays - (diffDays % 30)) / 30;
-      return { number: diffMonths, unit: "month" };
-    }
-
-    const diffYears = (diffDays - (diffDays % 365)) / 365;
-    return { number: diffYears, unit: "year" };
-  };
-
-  const diffObj = getScale();
-  return `${diffObj.number} ${diffObj.unit}${
-    diffObj.number > 1 ? "s" : ""
-  } ago`;
-}

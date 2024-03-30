@@ -1,9 +1,20 @@
 export interface Repositories {
-  repositories: Repository[];
+  repositories: ListRepository[];
+}
+
+export interface ListRepository {
+  name: string;
+  author: string;
+  lastModified: string;
 }
 
 export interface Repository {
   name: string;
   author: string;
-  lastModified: string;
+  tags: Tag[];
+}
+
+export interface Tag {
+  name: string;
+  createdAt: string;
 }

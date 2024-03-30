@@ -123,3 +123,9 @@ span {
   padding: 1em;
   min-height: 100vh;
 }
+
+.card {
+  background-color: $color-background-800;
+  padding: $padding-small;
+  border-radius: $border-radius;
+}

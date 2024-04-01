@@ -1,3 +1,4 @@
+import axios from "axios";
 import { Repositories, Repository } from "./Repository";
 
 let baseUrl = "/api";
@@ -24,22 +25,28 @@ export type Response<T> = {
 };
 
 async function get<T>(endpoint: string): Promise<Response<T>> {
-  const res = await fetch(`${baseUrl}${endpoint}`, { cache: "no-store" });
+  return axios
+    .get<T>(`${baseUrl}${endpoint}`)
+    .then((res) => {
+      console.log("GOT RES", res);
 
-  if (!res.ok) {
-    console.error("Failed to send request, res: ", res);
-    return {
-      isSuccess: false,
-      error: "Failed to perform request",
-    };
-  }
+      if (!res.data) {
+        return {
+          isSuccess: false,
+          error: "No data in response?",
+        };
+      }
 
-  const body = await res.json();
-
-  console.log("Response body", body);
-
-  return {
-    isSuccess: true,
-    data: body,
-  };
+      return {
+        isSuccess: true,
+        data: res.data!!,
+      };
+    })
+    .catch((err) => {
+      console.error("Failed to send request, res: ", err);
+      return {
+        isSuccess: false,
+        error: err,
+      };
+    });
 }

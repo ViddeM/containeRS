@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic";
 import { RepositoryView } from "@/components/views/repository-view/RepositoryView";
-import { Suspense } from "react";
 
 export default async function Page({
   params,
@@ -9,9 +8,7 @@ export default async function Page({
 }) {
   return (
     <main className="main">
-      <Suspense fallback={<p>Loading...</p>}>
-        <RepositoryView repositoryName={params.repository} />
-      </Suspense>
+      <RepositoryView repositoryName={params.repository} />
     </main>
   );
 }
